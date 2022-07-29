@@ -1,0 +1,114 @@
+<mvc:View
+	controllerName="projectpruebaodata.controller.login"
+	xmlns="sap.m"
+	xmlns:l="sap.ui.layout"
+	xmlns:form="sap.ui.layout.form"
+	xmlns:core="sap.ui.core"
+	xmlns:app="http://schemas.sap.com/sapui5/extension/sap.ui.core.CustomData/1" 
+	xmlns:mvc="sap.ui.core.mvc"
+	xmlns:smartForm="sap.ui.comp.smartform" 
+	xmlns:smartField="sap.ui.comp.smartfield"  >
+
+	<Page  id="idPageLogin"
+			showHeader="false">
+		<landmarkInfo>
+			<PageAccessibleLandmarkInfo
+				rootRole="Region"
+				rootLabel="{i18n>Login_rootLabel}"
+				contentRole="Main"
+				contentLabel="{i18n>Login_rootLabel}"/>
+		</landmarkInfo>
+<content>
+
+											<!--<core:Title text="{i18n>storeSettings}" />-->
+<VBox fitContainer="true" justifyContent="Center" alignItems="Center" alignContent="Center">
+    <!--<items>-->
+	<form:SimpleForm
+										id="idFormLogin"
+										columnsL="1"
+										columnsM="1"
+										editable="true"
+										 >
+   <form:content>
+		<core:Title text="{i18n>signin}" level="H2" class="sapThemeLightText"/>
+		<Label text="{i18n>lblIdLogin}" required="true" />
+		<Input id="idorden" showValueHelp="true" valueHelpRequest="onSearch" placeholder="ID Orden"
+				 	value="{
+								path : '/idorden',
+								type : 'sap.ui.model.type.Integer',
+                                  constraints : { 
+                                      minimum:00000001, 
+          							  maximum:99999999
+                                  }
+							}"
+	></Input>
+	 	<Label text="{i18n>lblIdPuestoTr}" required="true" />
+		<Input id="idpuestotrabajo" showValueHelp="true" valueHelpRequest="onSearch" placeholder="ID Puesto Trabajo"
+			value="{ 
+                                  path : '/idpuestotrabajo', 
+                                  type : 'sap.ui.model.type.String', 
+                                  constraints : { 
+                                     minLength: 1,
+									 maxLength: 8          							  
+                                  }
+                              }"
+		></Input>
+		<Label text="{i18n>lblIdUsuario}" required="true" />
+		<Input id="uid" showValueHelp="true" valueHelpRequest="onSearch" placeholder="Usuario ID"
+					value="{ 
+                                  path : '/uid', 
+                                  type : 'sap.ui.model.type.Integer', 
+                                  constraints : { 
+                                      minimum:00000001, 
+          							  maximum:99999999
+                                  }
+                              }"></Input>
+		<Label text="{i18n>lblpassword}" required="true" />
+		<Input id="password" placeholder="Password" type="Password"
+		value="{ 
+                                  path : '/password', 
+                                  type : 'sap.ui.model.type.String', 
+                                  constraints : { 
+                                     minLength: 4,
+									 maxLength: 4          							  
+                                  }
+                              }"></Input>
+		<!--<Button width="100%" text="Login" type="Emphasized" press=".onLoginSubmit"></Button>-->
+	</form:content>
+</form:SimpleForm>
+<!--
+	<ScrollContainer id="SC1" height="100%" horizontal="false" vertical="true" >			
+	<smartForm:SmartForm id="idloginForm" class="editableForm" editable="true" editTogglable="true">
+  <smartForm:Group label="Login">
+    <smartForm:GroupElement>
+      <smartField:SmartField value="{aufnr}" id= "idordenlogin" enabled="true" entitySet="AufnrSet" />
+	  <smartField:SmartField id="idCategory" value="{Category}"/>
+	  
+     </smartForm:GroupElement>
+	 <smartForm:GroupElement id="GE-CreationDateLong">
+					<smartField:SmartField id="idCreationDateLong" value="{CreationDate}">
+						<smartField:customData>
+							<core:CustomData key="dateFormatSettings" value='\{"style":"long"\}'/>
+						</smartField:customData>
+					</smartField:SmartField>
+				</smartForm:GroupElement>
+  </smartForm:Group>
+  
+</smartForm:SmartForm>	
+
+</ScrollContainer>
+-->
+  <!--</items>-->
+   </VBox>
+
+   
+  </content>
+  <footer>
+              <Toolbar>
+                  <ToolbarSpacer/>                  
+				  <Button  text="Login" type="Emphasized" press=".onLoginSubmit"></Button>
+              </Toolbar>
+          </footer>
+  	</Page>
+	
+</mvc:View>

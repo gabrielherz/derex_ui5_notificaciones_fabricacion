@@ -1,0 +1,41 @@
+{
+	"selectedKey": "",
+
+	"navigation": [
+		{
+			"titleI18nKey": "sideContentlogin",
+			"icon": "sap-icon://visits",
+			"expanded": true,
+			"key": "login",
+			"items": []
+		},
+		{
+			"titleI18nKey": "sideContentListFabricacion",
+			"icon": "sap-icon://factory",
+			"expanded": false,
+			"key": "fabricacion",
+			"items": []
+		},
+		{
+			"titleI18nKey": "sideContentEmpleados",
+			"icon": "sap-icon://employee-lookup",
+			"expanded": true,
+			"key": "empleados",
+			"items": []
+		},
+        {
+			"titleI18nKey": "sideContentTareas",
+			"icon": "sap-icon://activity-2",
+			"expanded": false,
+			"key": "tareas",
+			"items": []
+		}
+	],
+	"fixedNavigation": [
+		{
+			"titleI18nKey": "sideContentLogout",
+			"icon": "sap-icon://log",
+			"key": "logout"
+		}		
+	]
+}

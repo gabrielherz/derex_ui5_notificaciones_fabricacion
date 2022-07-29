@@ -1,0 +1,172 @@
+{
+  "_version": "1.40.0",
+  "sap.app": {
+    "id": "projectpruebaodata",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "0.0.1"
+    },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap-ux/fiori-freestyle-writer:basic",
+      "version": "0.11.15",
+      "toolsId": "a2ced831-440e-47e9-872e-5c8a1826efb9"
+    },
+    "dataSources": {
+      "matchcodes": {
+        "uri": "/sap/opu/odata/sap/ZUI5_MATCHCODES_SRV/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      },
+      "login": {
+        "uri": "/sap/opu/odata/sap/ZUI5_NF_LOGIN_SRV_01/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      },
+      "loginHistorico": {
+        "uri": "/sap/opu/odata/sap/ZUI5_NF_LOGIN_OPERARIO_SRV/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      },
+      "fabricacion": {
+        "uri": "/sap/opu/odata/sap/ZUI5_NF_ORDEN_FABRICACION_SRV/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "localUri": "localService/metadata.xml",
+          "odataVersion": "2.0"
+        }
+      }
+      
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "icons": {
+      "icon": "",
+      "favIcon": "",
+      "phone": "",
+      "phone@2": "",
+      "tablet": "",
+      "tablet@2": ""
+    },
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "flexEnabled": true,
+    "dependencies": {
+      "minUI5Version": "1.102.1",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.f": {},
+        "sap.suite.ui.generic.template": {},
+        "sap.ui.comp": {},
+        "sap.ui.generic.app": {},
+        "sap.ui.table": {},
+        "sap.ushell": {}
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleUrl": "i18n/i18n.properties",
+					"async": true,
+          "bundleName": "projectpruebaodata.i18n.i18n"
+        }
+      },
+      "side": {
+				"type": "sap.ui.model.json.JSONModel",
+				"uri": "model/sideContent.json"
+			},
+			"alerts": {
+				"type": "sap.ui.model.json.JSONModel",
+				"uri": "model/alerts.json"
+			},
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {}
+      }
+    },
+    "resources": {
+      "css": [
+        {
+          "uri": "css/style.css"
+        }
+      ]
+    },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "viewType": "XML",
+        "async": true,
+        "viewPath": "projectpruebaodata.view",
+        "controlAggregation": "pages",
+        "controlId": "mainContents"
+      },
+      "routes": [
+        {
+          "name": "login",
+          "pattern": "login",
+          "target": [
+            "login"
+          ]
+        },
+        {
+          "name": "fabricacion",
+          "pattern": "fabricacion",
+          "target": [
+            "fabricacion"
+          ]
+        }
+      ],
+      "targets": {
+        "login": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "login",
+          "viewName": "login"
+        },
+        "fabricacion": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewId": "fabricacion",
+          "viewName": "fabricacion"
+        }
+      }
+    },
+    "rootView": {
+      "viewName": "projectpruebaodata.view.App",
+      "type": "XML",
+      "async": true,
+      "id": "app"
+    }
+  }
+}

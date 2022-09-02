@@ -1,0 +1,408 @@
+
+  FUNCTION zme_i_confirm_ordenes_compra .
+*"----------------------------------------------------------------------
+*"*"Interfase local
+*"  IMPORTING
+*"     VALUE(IV_TIPO_CONFIRMACION) TYPE  BSTAE
+*"     REFERENCE(IT_ORDENES) TYPE  ZME_TT_U_FILE_CONFIRM_COMPRA
+*"  EXPORTING
+*"     VALUE(EV_RETURN) TYPE  FLAG
+*"  CHANGING
+*"     REFERENCE(EO_LOG) TYPE REF TO  ZCL_LOG
+*"----------------------------------------------------------------------
+
+    DATA: lv_index TYPE syst-tabix,
+          lt_ekpo  TYPE STANDARD TABLE OF ekpo.
+
+    DATA: lr_werks         TYPE RANGE OF ewerk,
+          lr_ebeln_filter  TYPE RANGE OF ekes-ebeln,
+          lr_ebtyp         TYPE RANGE OF ekes-ebtyp,
+          lr_eindt         TYPE RANGE OF ekes-eindt,
+          lr_fecha_entrega TYPE RANGE OF eket-eindt.
+
+    DATA: lt_conf_pedidos TYPE  bapiekes_tp,
+          lt_bapiret2     TYPE  bapiret2_t,
+          ls_bapiret2     LIKE LINE OF lt_bapiret2,
+          lt_po_item      TYPE STANDARD TABLE OF bapimepoitem,
+          lt_po_schedule  TYPE STANDARD TABLE OF bapimeposchedule,
+          lt_po_itemx     TYPE STANDARD TABLE OF bapimepoitemx.
+*          lt_collect      TYPE   gty_collect_ped.
+*          lt_po_confirmation TYPE STANDARD TABLE OF  bapiekes.
+    DATA:
+      lv_etens      TYPE etens,
+      lv_index_item TYPE syst-tabix.
+
+
+    PERFORM f_update_tipo_conf USING iv_tipo_confirmacion
+                                     it_ordenes
+                                     ev_return
+                                     eo_log.
+
+
+    DATA ls_data TYPE zme_s_u_file_confirm_compra.
+
+    DATA(lt_ordenes) = it_ordenes.
+
+    SORT lt_ordenes BY pedido
+                       posicion.
+    SELECT
+              ebeln, "id compra
+              ebelp, " posición
+              bstae
+        FROM ekpo AS t2
+      FOR ALL ENTRIES IN @lt_ordenes
+
+        WHERE   t2~elikz NE @abap_true
+            AND t2~loekz NE @gc_ind_borrado
+            AND t2~bstae EQ 'Z001'  "si no tiene control de confirmaciones asignado
+            AND t2~ebeln EQ @lt_ordenes-pedido
+*            AND t2~ebelp EQ @it_ordenes-ebelp
+        INTO TABLE @DATA(lt_data).
+
+* si no existen las órdenes en el sistema
+    IF lt_data IS INITIAL.
+      PERFORM f_add_msj USING        ''
+                                     ''
+                                     ''
+                                     ''
+                                     '012'
+                                     'E'
+                                     'ZME_MSG'
+                           CHANGING  eo_log   .
+
+    ENDIF.
+
+
+    SORT lt_data BY ebeln ebelp.
+
+    DATA ls_orden LIKE LINE OF it_ordenes.
+    LOOP AT it_ordenes ASSIGNING FIELD-SYMBOL(<lfs_orden>).
+      IF ls_orden-pedido NE <lfs_orden>-pedido.
+        lv_index = 1.
+      ENDIF.
+      PERFORM f_exec_batch_input_ins USING <lfs_orden>
+                                           lv_index.
+      ls_orden = <lfs_orden>.
+      ADD 1 TO lv_index.
+    ENDLOOP.
+
+  ENDFUNCTION.
+
+
+  FORM f_update_tipo_conf USING    iv_tipo_confirmacion
+                                   it_ordenes           TYPE zme_tt_u_file_confirm_compra
+                          CHANGING ev_return
+                                   eo_log	TYPE REF TO	zcl_log.
+
+    DATA: lv_index TYPE syst-tabix,
+          lt_ekpo  TYPE STANDARD TABLE OF ekpo.
+
+    DATA: lr_werks         TYPE RANGE OF ewerk,
+          lr_ebeln_filter  TYPE RANGE OF ekes-ebeln,
+          lr_ebtyp         TYPE RANGE OF ekes-ebtyp,
+          lr_eindt         TYPE RANGE OF ekes-eindt,
+          lr_fecha_entrega TYPE RANGE OF eket-eindt.
+
+    DATA: lt_conf_pedidos TYPE  bapiekes_tp,
+          lt_bapiret2     TYPE  bapiret2_t,
+          ls_bapiret2     LIKE LINE OF lt_bapiret2,
+          lt_po_item      TYPE STANDARD TABLE OF bapimepoitem,
+          lt_po_schedule  TYPE STANDARD TABLE OF bapimeposchedule,
+          lt_po_itemx     TYPE STANDARD TABLE OF bapimepoitemx.
+*          lt_po_confirmation TYPE STANDARD TABLE OF  bapiekes.
+    DATA:
+*      lt_ekes  TYPE gty_ekes,
+      lt_xekes      TYPE mmpr_uekes,
+      lt_yekes      TYPE mmpr_uekes,
+
+      ls_yekes      TYPE uekes,
+      lv_etens      TYPE etens,
+      lv_index_item TYPE syst-tabix.
+*    DATA lt_po_confirmation TYPE STANDARD TABLE OF ekes.
+
+*      ls_orden LIKE LINE OF it_ordenes.
+    DATA(lt_ordenes) = it_ordenes.
+
+    SORT lt_ordenes BY pedido
+                       posicion.
+    SELECT
+              ebeln, "id compra
+              ebelp, " posición
+              bstae
+        FROM ekpo AS t2
+      FOR ALL ENTRIES IN @lt_ordenes
+
+        WHERE   t2~elikz NE @abap_true
+            AND t2~loekz NE @gc_ind_borrado
+            AND t2~bstae EQ ''  "si no tiene control de confirmaciones asignado
+            AND t2~ebeln EQ @lt_ordenes-pedido
+*            AND t2~ebelp EQ @it_ordenes-ebelp
+        INTO TABLE @DATA(lt_data).
+
+* si no existen las órdenes en el sistema
+    IF lt_data IS INITIAL.
+      PERFORM f_add_msj USING        ''
+                                     ''
+                                     ''
+                                     ''
+                                     '012'
+                                     'E'
+                                     'ZME_MSG'
+                           CHANGING  eo_log   .
+
+    ENDIF.
+**  verificar si los campos son correctos
+
+    IF lt_data IS NOT INITIAL.
+      SELECT ebeln,
+             ebelp
+        FROM ekes
+        FOR ALL ENTRIES IN @lt_data
+        WHERE ebeln EQ @lt_data-ebeln
+        INTO TABLE @DATA(lt_po_confirmation).
+    ENDIF.
+
+
+    LOOP AT lt_ordenes  ASSIGNING FIELD-SYMBOL(<lfs_orden>).
+      CLEAR: lt_bapiret2,
+             ls_bapiret2,
+             lt_po_item,
+             lt_po_itemx,
+             lt_xekes,
+             lt_po_schedule.
+*             lt_po_confirmation.
+
+      DATA(lv_error) = abap_false.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = <lfs_orden>-posicion
+        IMPORTING
+          output = <lfs_orden>-posicion.
+      READ TABLE lt_data TRANSPORTING NO FIELDS WITH KEY ebeln = <lfs_orden>-pedido
+                                                         ebelp = CONV ebelp( <lfs_orden>-posicion ).
+      IF sy-subrc NE 0.
+        PERFORM f_add_msj USING        <lfs_orden>-pedido
+                                       <lfs_orden>-posicion
+                                       ''
+                                       ''
+                                       '008'
+                                       'E'
+                                       'ZME_MSG'
+                             CHANGING  eo_log   .
+        CONTINUE.
+      ENDIF.
+
+***  Verificación del control de confirmación e inserción del mismo
+*  Se obtienen los pedidos y los repartos
+      CALL FUNCTION 'BAPI_PO_GETDETAIL1'
+        EXPORTING
+          purchaseorder = <lfs_orden>-pedido
+        TABLES
+          return        = lt_bapiret2
+          poitem        = lt_po_item
+          poschedule    = lt_po_schedule.
+*          poconfirmation = lt_po_confirmation.
+
+*   Si no hay errores
+      CHECK lt_bapiret2 IS INITIAL.
+
+      LOOP AT lt_po_item ASSIGNING FIELD-SYMBOL(<lfs_po_item>).
+        lv_index_item = sy-tabix.
+*        si no es la posición que necesito tratar, la elimino
+        IF <lfs_po_item>-po_item NE CONV ebelp( <lfs_orden>-posicion ).
+          DELETE lt_po_item INDEX lv_index_item.
+          CONTINUE.
+        ENDIF.
+        IF <lfs_po_item>-conf_ctrl NE ''.
+          DELETE lt_po_item INDEX lv_index_item.
+          CONTINUE.
+        ENDIF.
+*        se verifica si esta posición tiene confirmaciones, si no es así continúa
+*        READ TABLE lt_po_confirmation TRANSPORTING NO FIELDS WITH KEY po_item = <lfs_orden>-posicion.
+*                                                                         ebelp = CONV ebelp( <lfs_orden>-posicion ).
+*        IF sy-subrc EQ 0.
+*          PERFORM f_add_msj USING   <lfs_orden>-pedido
+*                                    <lfs_orden>-posicion
+*                                    ''
+*                                    ''
+*                                    '018'
+*                                    'E'
+*                                    'ZME_MSG'
+*                          CHANGING  eo_log   .
+*          DELETE lt_po_item INDEX lv_index_item.
+*          CONTINUE.
+
+
+*        ENDIF.
+
+        <lfs_po_item>-conf_ctrl = iv_tipo_confirmacion.
+*        si el fichero trae la fecha de confirmación
+        IF <lfs_orden>-fecha_conf IS NOT INITIAL.
+          <lfs_po_item>-acknowl_no = <lfs_orden>-ref.
+          <lfs_po_item>-trackingno = <lfs_orden>-ref.
+        ENDIF.
+        APPEND INITIAL LINE TO lt_po_itemx ASSIGNING FIELD-SYMBOL(<lfs_po_itemx>).
+        <lfs_po_itemx>-po_item = <lfs_po_item>-po_item.
+        <lfs_po_itemx>-acknowl_no = abap_true.
+        <lfs_po_itemx>-conf_ctrl = abap_true.
+        <lfs_po_itemx>-trackingno = abap_true.
+
+      ENDLOOP.
+      CALL FUNCTION 'BAPI_PO_CHANGE'
+        EXPORTING
+          purchaseorder = <lfs_orden>-pedido
+        TABLES
+          return        = lt_bapiret2
+          poitem        = lt_po_item
+          poitemx       = lt_po_itemx.
+      IF lt_bapiret2 IS NOT INITIAL.
+        PERFORM f_add_msj_from_bapiret  USING    lt_bapiret2
+                                        CHANGING eo_log   .
+        CLEAR lt_bapiret2.
+      ENDIF.
+
+*    PERMITE REALIZAR COMMIT
+*      IF iv_commit_confirmaciones IS NOT INITIAL.
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+        EXPORTING
+          wait   = abap_true
+        IMPORTING
+          return = ls_bapiret2.
+*      ENDIF.
+      IF ls_bapiret2 IS NOT INITIAL.
+        APPEND ls_bapiret2 TO lt_bapiret2.
+      ENDIF.
+      READ TABLE lt_bapiret2 TRANSPORTING NO FIELDS WITH KEY type = 'E'.
+      IF sy-subrc EQ 0.
+        ev_return = abap_true.
+        lv_error = abap_true.
+      ENDIF.
+*      READ TABLE lt_bapiret2 TRANSPORTING NO FIELDS WITH KEY type = 'W'.
+*      IF sy-subrc EQ 0.
+*        ev_return = abap_true.
+*      ENDIF.
+      IF lv_error IS NOT INITIAL.
+        PERFORM f_add_msj_from_bapiret  USING    lt_bapiret2
+                                        CHANGING eo_log   .
+        CLEAR lt_bapiret2.
+      ENDIF.
+    ENDLOOP.
+
+  ENDFORM.
+
+
+  FORM f_exec_batch_input_ins  USING   is_orden TYPE zme_s_u_file_confirm_compra
+                                       iv_index.
+    DATA: modo TYPE c VALUE 'E'.
+    DATA: lt_poitem TYPE bapimepoitem_tp.
+    DATA lt_bapiret2 TYPE bapiret2_t.
+    DATA lv_fecha(10) TYPE c.
+    DATA lv_cantidad(13) TYPE c.
+
+*  PERFORM f_get_posiciones USING          ps_data
+*                           CHANGING      lt_poitem
+    CLEAR bdc_tab[].
+
+
+    PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=TABIDT18'.
+    PERFORM bdc_field       USING 'MEPO_TOPLINE-BSART'
+                                  'NB'.
+    PERFORM bdc_field       USING 'DYN_6000-LIST'
+                                  '   1'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'MEPO1319-MATKL'.
+    PERFORM bdc_field       USING 'MEPO1319-SPINF'
+                                  'X'.
+
+    PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '/00'.
+    PERFORM bdc_field       USING 'MEPO_TOPLINE-BSART'
+                                  'NB'.
+    PERFORM bdc_field       USING 'DYN_6000-LIST'
+                                  '   1'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'MEPO1334-BSTAE'.
+*perform bdc_field       using 'MEPO1334-LABNR'
+*                              '18.10.2021'.
+
+    IF is_orden-fecha_estadistica IS NOT INITIAL.
+      WRITE is_orden-fecha_estadistica TO lv_fecha LEFT-JUSTIFIED.
+      DATA(lv_lbl1) = 'EKES-HANDOVERDATE(' && iv_index && ')'.
+      PERFORM bdc_field       USING lv_lbl1
+                                    lv_fecha.
+    ENDIF.
+*    DATA(lv_lbl2) = 'EKES-HANDOVERTIME(' && iv_index && ')'.
+*    PERFORM bdc_field       USING lv_lbl2
+*                                  ''.
+    DATA(lv_txt_ebtyp) = 'EKES-EBTYP('  && iv_index && ')'.
+    PERFORM bdc_field       USING lv_txt_ebtyp
+                                  is_orden-tipo_conf. "'AB'.
+
+    DATA(lv_lbl3) = 'RM06E-LPEIN(' && iv_index && ')'.
+    PERFORM bdc_field       USING lv_lbl3
+                                  'D'.
+    WRITE is_orden-fecha_conf TO lv_fecha LEFT-JUSTIFIED.
+    DATA(lv_lbl4) = 'RM06E-EEIND(' && iv_index && ')'.
+    PERFORM bdc_field       USING lv_lbl4
+                                  lv_fecha.
+*    DATA(lv_lbl5) = 'EKES-UZEIT(' && iv_index && ')'.
+*    PERFORM bdc_field       USING lv_lbl5
+*                                  ''.
+    WRITE is_orden-cantidad TO lv_cantidad.
+    DATA(lv_lbl6) = 'EKES-MENGE(' && iv_index && ')'.
+    PERFORM bdc_field       USING lv_lbl6
+                                  lv_cantidad.
+    DATA(lv_lbl7) = 'EKES-XBLNR(' && iv_index && ')'.
+    PERFORM bdc_field       USING lv_lbl7
+                                  is_orden-ref.
+    WRITE is_orden-fechar_creacion TO lv_fecha LEFT-JUSTIFIED.
+    DATA(lv_lbl8) = 'EKES-ERDAT(' && iv_index && ')'.
+    PERFORM bdc_field       USING lv_lbl8
+                                  lv_fecha.
+
+* SE GUARDA
+    PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+    PERFORM bdc_field       USING 'BDC_OKCODE' '=MESAVE'.
+
+
+    PERFORM bdc_field       USING 'MEPO_TOPLINE-BSART'
+                                  'NB'.
+
+    PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+    PERFORM bdc_field       USING 'BDC_OKCODE' '=MEBACK'.
+
+
+    SET PARAMETER ID 'BES' FIELD is_orden-pedido.
+
+    SET PARAMETER ID 'BSP' FIELD is_orden-posicion.
+
+    CALL TRANSACTION 'ME22N' USING bdc_tab
+                               MODE modo
+                               MESSAGES INTO itab
+                               UPDATE 'S'.
+
+
+    LOOP AT itab ASSIGNING FIELD-SYMBOL(<lfs_itab>) WHERE msgtyp NE 'S'.
+      APPEND INITIAL LINE TO lt_bapiret2 ASSIGNING FIELD-SYMBOL(<lfs_bapiret2>).
+      <lfs_bapiret2>-type   = <lfs_itab>-msgtyp.
+      <lfs_bapiret2>-id  = <lfs_itab>-msgid.
+      <lfs_bapiret2>-number  = <lfs_itab>-msgnr.
+      <lfs_bapiret2>-message_v1  = <lfs_itab>-msgv1.
+      <lfs_bapiret2>-message_v2  = <lfs_itab>-msgv2.
+      <lfs_bapiret2>-message_v3  = <lfs_itab>-msgv3.
+      <lfs_bapiret2>-message_v4  = <lfs_itab>-msgv4.
+      MESSAGE ID <lfs_bapiret2>-id TYPE <lfs_bapiret2>-type NUMBER <lfs_bapiret2>-number
+          INTO <lfs_bapiret2>-message
+          WITH <lfs_bapiret2>-message_v1 <lfs_bapiret2>-message_v2  <lfs_bapiret2>-message_v3  <lfs_bapiret2>-message_v4 .
+      CONCATENATE is_orden-pedido '/' is_orden-posicion ':  ' <lfs_bapiret2>-message  INTO <lfs_bapiret2>-message RESPECTING BLANKS.
+    ENDLOOP.
+
+    zcl_utilities=>show_info_dialog_from_bapiret2(
+        iv_titulo = 'Insertar'
+        it_bapiret2 = lt_bapiret2
+      ).
+
+  ENDFORM.

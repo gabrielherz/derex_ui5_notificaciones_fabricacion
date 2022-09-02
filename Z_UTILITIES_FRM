@@ -1,0 +1,288 @@
+*&---------------------------------------------------------------------*
+*& Include          Z_UTILITIES_FRM
+*&---------------------------------------------------------------------*
+
+
+*&---------------------------------------------------------------------*
+*& Form F_AYUDA Subrutina para carga de fcihero CSV
+*&---------------------------------------------------------------------*
+FORM f_ayuda CHANGING pv_filename TYPE localfile.
+
+  CALL FUNCTION 'KD_GET_FILENAME_ON_F4'
+    EXPORTING
+      static    = abap_true
+    CHANGING
+      file_name = pv_filename.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_add_msj
+*& Agrega un mensaje al LOG SLG
+*&---------------------------------------------------------------------*
+FORM f_add_msj  USING     i_var1
+                          i_var2
+                          i_var3
+                          i_var4
+                          i_cod_mensaje
+                          i_tipo_mensaje TYPE symsgty
+                          i_clase_mensaje
+                CHANGING  eo_log         TYPE REF TO   zcl_log.
+  DATA: ls_msg     TYPE bal_s_msg.
+  ls_msg-msgty     = i_tipo_mensaje.
+  ls_msg-msgno     = i_cod_mensaje.
+  ls_msg-msgv1     = i_var1.
+  ls_msg-msgv2     = i_var2.
+  ls_msg-msgv3     = i_var3.
+  ls_msg-msgv4     = i_var4.
+
+  ls_msg-time_stmp = sy-datlo && sy-timlo.
+  ls_msg-msgid     = i_clase_mensaje. "'ZME_MSG'.
+*  se agrega el mensaje a la clase de mensajes
+  DATA(lv_error) = eo_log->add_one_msg( is_msg = ls_msg ).
+*  si hay un error se lanza un mensaje indicando que ha habido un error al intentar agregarlo y finaliza el program, nunca debería de ocurrir este error porque sino no se puede mostrar el log
+  IF lv_error IS NOT INITIAL.
+    MESSAGE e001(z_utilities_msg).
+  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form f_add_msj
+*&---------------------------------------------------------------------*
+FORM f_add_msj_from_bapiret  USING    it_bapiret2    TYPE  bapiret2_t
+                             CHANGING eo_log         TYPE REF TO   zcl_log.
+  DATA: ls_msg     TYPE bal_s_msg.
+  LOOP AT it_bapiret2 ASSIGNING FIELD-SYMBOL(<lfs_bapiret2>).
+
+    ls_msg-msgty  = <lfs_bapiret2>-type.
+    ls_msg-msgid  = <lfs_bapiret2>-id.
+    ls_msg-msgno  = <lfs_bapiret2>-number.
+    ls_msg-msgv1  = <lfs_bapiret2>-message_v1.
+    ls_msg-msgv2  = <lfs_bapiret2>-message_v2.
+    ls_msg-msgv3  = <lfs_bapiret2>-message_v3.
+    ls_msg-time_stmp = sy-datlo && sy-timlo.
+    DATA(lv_error) = eo_log->add_one_msg( is_msg = ls_msg ).
+*  si hay un error se lanza un mensaje indicando que ha habido un error al intentar agregarlo y finaliza el program, nunca debería de ocurrir este error porque sino no se puede mostrar el log
+    IF lv_error IS NOT INITIAL.
+      MESSAGE e001(z_utilities_msg).
+    ENDIF.
+  ENDLOOP.
+*  ls_msg-msgty     = i_tipo_mensaje.
+*  ls_msg-msgno     = i_cod_mensaje.
+*  ls_msg-msgv1     = i_var1.
+*  ls_msg-msgv2     = i_var2.
+*  ls_msg-msgv3     = i_var3.
+*
+*  ls_msg-time_stmp = sy-datlo && sy-timlo.
+*  ls_msg-msgid     = 'ZME_MSG'.
+*  se agrega el mensaje a la clase de mensajes
+*  DATA(lv_error) = eo_log->add_one_msg( is_msg = ls_msg ).
+**  si hay un error se lanza un mensaje indicando que ha habido un error al intentar agregarlo y finaliza el program, nunca debería de ocurrir este error porque sino no se puede mostrar el log
+*  IF lv_error IS NOT INITIAL.
+*    MESSAGE e009(zme_msg).
+*  ENDIF.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form F_GET_FILE
+*&---------------------------------------------------------------------*
+FORM f_get_file  USING    pv_filename  TYPE localfile
+                 CHANGING pt_data_file TYPE string_table.
+
+  IF pv_filename IS NOT INITIAL.
+
+    CALL FUNCTION 'GUI_UPLOAD'
+      EXPORTING
+        filename                = CONV string( pv_filename )
+      TABLES
+        data_tab                = pt_data_file
+      EXCEPTIONS
+        file_open_error         = 1
+        file_read_error         = 2
+        no_batch                = 3
+        gui_refuse_filetransfer = 4
+        invalid_type            = 5
+        no_authority            = 6
+        unknown_error           = 7
+        bad_data_format         = 8
+        header_not_allowed      = 9
+        separator_not_allowed   = 10
+        header_too_long         = 11
+        unknown_dp_error        = 12
+        access_denied           = 13
+        dp_out_of_memory        = 14
+        disk_full               = 15
+        dp_timeout              = 16
+        OTHERS                  = 17.
+
+*Se borra la cabecera de los ficheros
+    IF sy-subrc IS INITIAL.
+      DELETE pt_data_file INDEX 1.
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_GET_FILE_FORM_AL11
+*&---------------------------------------------------------------------*
+FORM f_get_file_form_al11  USING    p_ruta
+                           CHANGING pt_file         TYPE        string_table
+                                    pv_error        TYPE        boolean
+                                    po_log          TYPE REF TO zcl_log.
+
+  DATA: lv_dataset_read TYPE string,
+        lv_target_file  TYPE sapb-sappfad.
+* abro el buffer para leer el fichero
+  TRY.
+      OPEN DATASET p_ruta FOR INPUT IN TEXT MODE ENCODING DEFAULT WITH SMART LINEFEED.
+      DO.
+*       recorro línea por línea del fichero
+        READ DATASET p_ruta INTO lv_dataset_read.
+        IF sy-subrc = 0.
+*         se guarda la data del fichero en la tabla interna para retornarlo desde la subrutina
+          APPEND lv_dataset_read TO pt_file.
+        ELSE.
+          EXIT.
+        ENDIF.
+      ENDDO.
+      CLOSE DATASET p_ruta.
+      IF pt_file  IS NOT INITIAL.
+        DELETE pt_file INDEX 1.
+      ENDIF.
+*   si no encuentra el fichero
+    CATCH cx_sy_file_open_mode
+          cx_sy_file_open  .
+      PERFORM f_add_msj  USING   ' '
+                                 ' '
+                                 ' '
+                                 ' '
+                                 '002'
+                                 'E'
+                                 'Z_UTILITIES_MSG'
+                       CHANGING  po_log   .
+      pv_error = abap_true.
+  ENDTRY.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form F_CONVERT_DATE
+* se verifica que la fecha suministrada se encuentre correcta
+*&---------------------------------------------------------------------*
+FORM f_convert_date  USING   pv_value
+                             pv_param1
+                             pv_param2
+                             pv_param3
+                             pv_cod_msg
+                             pv_clase_msg
+                    CHANGING pv_assigned_value
+                             pv_error
+                             po_log             TYPE REF TO   zcl_log.
+
+
+  CALL FUNCTION 'CONVERT_DATE_TO_INTERNAL'
+    EXPORTING
+      date_external            = pv_value
+    IMPORTING
+      date_internal            = pv_assigned_value
+    EXCEPTIONS
+      date_external_is_invalid = 1
+      OTHERS                   = 2.
+  IF sy-subrc <> 0.
+    PERFORM f_add_msj         USING     pv_value
+                                        pv_param1
+                                        pv_param2
+                                        pv_param3
+                                        pv_cod_msg
+                                        'E'
+                                        pv_clase_msg
+                              CHANGING  po_log   .
+    pv_error = abap_true.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form F_VALIDAR_NUM
+* se valida el número suministrado desde el fichero
+*&---------------------------------------------------------------------*
+FORM f_validar_num  USING    pv_value_str TYPE string
+                             pv_param1
+                             pv_param2
+                             pv_param3
+                             pv_cod_msg
+                             pv_clase_msg
+                    CHANGING pv_num
+                             pv_error
+                             po_log       TYPE REF TO   zcl_log.
+
+  TRY.
+      IF pv_value_str IS NOT INITIAL.
+
+        REPLACE ',' IN pv_value_str WITH '.'.
+        pv_num = pv_value_str.
+*
+**        SPLIT pv_value_str AT '.' INTO DATA(lv_int) DATA(lv_dec).
+*        IF strlen( lv_dec ) > 3.
+*          PERFORM f_add_msj   USING     pv_index
+*                                        pv_value_str
+*                                        pv_nombre_fichero
+*                                        '393'
+*                                        'W'
+*                              CHANGING  po_log   .
+*        ENDIF.
+      ENDIF.
+    CATCH cx_sy_conversion_no_number.
+      PERFORM f_add_msj     USING     pv_value_str
+                                      pv_param1
+                                      pv_param2
+                                      pv_param3
+                                      pv_cod_msg
+                                      'E'
+                                      pv_clase_msg
+                            CHANGING  po_log   .
+      pv_error = abap_true.
+  ENDTRY.
+ENDFORM.
+
+
+FORM f_validar_domvalue USING    i_value
+                                 i_param1
+                                 i_param2
+                                 i_param3
+                                 i_domname
+                                 i_cod_msg
+                                 i_clase_msg
+                        CHANGING e_error
+                                 eo_log             TYPE REF TO   zcl_log.
+
+  DATA lt_ebtyp TYPE /accgo/cmgl_tt_dd07v.
+
+  CALL FUNCTION 'DD_DOMVALUES_GET'
+    EXPORTING
+      domname        = i_domname
+*     TEXT           = ' '
+      langu          = 'S'
+*     BYPASS_BUFFER  = ' '
+*     IMPORTING
+*     RC             =
+    TABLES
+      dd07v_tab      = lt_ebtyp
+    EXCEPTIONS
+      wrong_textflag = 1
+      OTHERS         = 2.
+
+  READ TABLE lt_ebtyp TRANSPORTING NO FIELDS WITH KEY domvalue_l =  i_value.
+  IF sy-subrc EQ 0.
+    PERFORM f_add_msj         USING     i_value
+                                        i_param1
+                                        ''
+                                        ''
+                                        i_cod_msg
+                                        'E'
+                                        i_clase_msg
+                              CHANGING  eo_log   .
+    e_error = abap_true.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.

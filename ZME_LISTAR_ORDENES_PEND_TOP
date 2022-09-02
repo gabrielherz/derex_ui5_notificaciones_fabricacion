@@ -1,0 +1,119 @@
+*&---------------------------------------------------------------------*
+*& Include          ZME_LISTAR_ORDENES_PEND_TOP
+*&---------------------------------------------------------------------*
+TYPES:
+* Listado a mostrar
+  gsy_eket          TYPE zme_s_ordenes_pendientes,
+  gty_eket          TYPE STANDARD TABLE OF gsy_eket,
+  gsy_ekes          TYPE ekes,
+  gty_ekes          TYPE STANDARD TABLE OF gsy_ekes,
+*  Tabla con el listado de los proveedores y las órdenes de compra
+  gsy_list_ord_prov TYPE zme_s_ordenes_proveedores,
+  gty_list_ord_prov TYPE STANDARD TABLE OF gsy_list_ord_prov,
+
+*   estructura con la confirmación del pedido
+  BEGIN OF gsy_pedido,
+    ebtyp         TYPE ebtyp,
+    lpein         TYPE lpein,
+    fecha_entrega TYPE dats,
+    ref           TYPE xblnr_long,
+    cantidad      TYPE bbmng, "etmen,
+    etens         TYPE etens, "POSICIÓN DEL EKES
+    precio        TYPE ekpo-netpr,
+  END OF gsy_pedido,
+*  estructura de formulario
+  BEGIN OF gsy_form_fields,
+    lb_lpein   TYPE prgrs, "lpein,
+    lb_ebtyp   TYPE ebtyp,
+    txt_ref    TYPE xblnr_long,
+    txt_eindt  TYPE eindt,
+    txt_menge  TYPE bbmng,
+    txt_precio TYPE ekpo-netpr,
+  END OF gsy_form_fields,
+
+  BEGIN OF gsy_tipo_conf_txt,
+    ebtyp,
+    ebtxt,
+  END OF gsy_tipo_conf_txt,
+  gty_tipo_conf_txt TYPE STANDARD TABLE OF gsy_tipo_conf_txt,
+
+  BEGIN OF gsy_tprg,
+    prgbz	TYPE prgbz,
+    prgrs	TYPE prgrs,
+    prgtx	TYPE prgtx,
+  END OF gsy_tprg,
+  gty_tprg TYPE STANDARD TABLE OF gsy_tprg,
+
+* EMISOR DE  EMAIL
+  BEGIN OF gsy_email_emisor,
+    partner	TYPE bu_partner,
+    pernr	  TYPE pernr_d,
+    name1	  TYPE name1_gp,
+    rmail	  TYPE ad_smtpadr,
+  END OF  gsy_email_emisor .
+TYPES:
+  gty_email_emisor TYPE STANDARD TABLE OF gsy_email_emisor WITH NON-UNIQUE KEY partner pernr ..
+
+DATA: gt_data           TYPE gty_eket,
+*      usado en la dynpro 0300
+      gt_dest_email     TYPE zme_tt_ordenes_proveedores,
+      gt_emisores_email TYPE gty_email_emisor.
+*     dynpro 0100
+DATA: go_cont_eket TYPE REF TO cl_gui_custom_container,
+      go_grid_eket TYPE REF TO cl_gui_alv_grid,
+*      dynpro 0300
+      go_cont_mail TYPE REF TO cl_gui_custom_container,
+      go_grid_mail TYPE REF TO cl_gui_alv_grid,
+      gs_pedido    TYPE gsy_pedido.
+DATA gt_tipo_fecha TYPE gty_tprg .
+* campos dynpro
+DATA:
+  gs_form_0200     TYPE gsy_form_fields,
+*  lb_ebtyp          TYPE ebtyp,
+*  lb_lpein          TYPE lpein,
+*  txt_fecha_entrega TYPE dats,
+*  txt_cant_reparto  TYPE bbmng, "etmen,
+  gt_listbox_ebtyp TYPE vrm_values,
+  gt_listbox_lpein TYPE vrm_values,
+*      txt_fecha_entrega_est TYPE dats,
+  gc_status(20)    TYPE c.
+
+CONSTANTS:
+  gc_derex                   TYPE ekko-ekorg VALUE '1001',
+  gc_ind_borrado             TYPE ekpo-loekz VALUE 'L',
+  gc_ebeln(5)                TYPE c         VALUE 'EBELN',
+  gc_icon_d(20)              TYPE c         VALUE 'D_FORM_ICON',
+  gc_icon_u(20)              TYPE c         VALUE 'U_FORM_ICON',
+  gc_icon_c(20)              TYPE c         VALUE 'C_FORM_ICON',
+  gc_icon_w                  TYPE iconname  VALUE 'ICON_MESSAGE_WARNING',
+  gc_icon_e                  TYPE iconname  VALUE 'ICON_MESSAGE_ERROR',
+  gc_icon_i                  TYPE iconname  VALUE 'ICON_INFORMATION',
+  gc_w                       TYPE c         VALUE 'W',
+  gc_e                       TYPE c         VALUE 'E',
+  gc_i                       TYPE c         VALUE 'I',
+  gc_u                       TYPE c         VALUE 'U',
+  gc_d                       TYPE c         VALUE 'D',
+  gc_save(4)                 TYPE c         VALUE 'SAVE',
+  gc_saved_item              TYPE syucomm   VALUE 'SAVED_ITEM',
+  gc_item_sel                TYPE syucomm   VALUE 'ITEM_SEL',
+  gc_item_me22n              TYPE syucomm   VALUE 'ITEM_ME22N',
+  gc_tipo_confirmacion       TYPE bstae     VALUE 'Z001',
+  gc_ch(2)                   TYPE c         VALUE 'CH',
+  gc_ab(2)                   TYPE c         VALUE 'AB',
+  gc_ba(2)                   TYPE c         VALUE 'BA',
+  gc_check_box(9)            TYPE c         VALUE 'CHECK_BOX',
+  gc_reclamar(7)             TYPE c         VALUE 'RECLAMAR',
+  gc_confirm(7)              TYPE c         VALUE 'CONFIRM',
+  gc_enviar(3)               TYPE c         VALUE '%SL',
+  gc_template_email_conf(30)    TYPE c      VALUE 'ZME_ORDENES_PEND_CONFIRMACION',
+  gc_template_email_reclama(30) TYPE c      VALUE 'ZME_ORDENES_PEND_RECLAMACION',
+  gc_email_img_logo(40)         TYPE c      VALUE 'email_derex_logo_con_fondo.JPG'.
+
+
+* campo global con el índice dle click/hotspot del listado ALV
+DATA: gv_alv_index TYPE lvc_index,
+      gs_data      LIKE LINE OF gt_data.
+DATA: lb_lpein TYPE prgrs,
+      lb_ebtyp TYPE ebtyp.
+* status para el envío (confirmación / reclamación)
+DATA: gc_accion_envio(10)      TYPE c         .

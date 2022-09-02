@@ -1,0 +1,1598 @@
+*&---------------------------------------------------------------------*
+*& Include          ZME_LISTAR_ORDENES_PEND_FRM
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form F_MAIN
+*&---------------------------------------------------------------------*
+*& Subrutina principal
+*&---------------------------------------------------------------------*
+
+FORM f_main .
+
+  PERFORM f_get_maestros CHANGING gt_data
+                                  gt_listbox_ebtyp
+                                  gt_listbox_lpein
+                                  gt_tipo_fecha.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_GET_MAESTROS
+*&---------------------------------------------------------------------*
+*& Obtiene los datos de BD
+*&---------------------------------------------------------------------*
+FORM f_get_maestros  CHANGING et_data TYPE gty_eket
+                              et_listbox_ebtyp  TYPE vrm_values
+                              et_listbox_lpein  TYPE vrm_values
+                              et_tipo_fecha     TYPE gty_tprg.
+
+  CALL FUNCTION 'ZME_GET_ORDENES_PEND'
+    EXPORTING
+      iv_werks         = gc_derex
+    IMPORTING
+      et_data          = et_data
+*     EV_FEC_ENTREGA   =
+    TABLES
+      ir_ebeln         = r_ebeln
+      ir_matnr         = r_matnr
+      ir_proveedor     = r_prov
+      ir_bedat         = r_bedat
+      ir_fecha_entrega = r_fec_en
+      ir_eindt         = r_eindt
+      ir_ebtyp         = r_ebtyp.
+
+  SELECT ebtyp AS key,
+        ebtxt AS text
+    FROM t163f
+    WHERE spras EQ 'S'
+          AND ( ebtyp EQ @gc_ab
+          OR ebtyp EQ @gc_ba )
+    INTO TABLE @et_listbox_ebtyp.
+
+  SELECT DISTINCT prgrs AS key,
+                  prgtx AS text
+               FROM tprg
+               WHERE spras EQ 'S'
+               INTO TABLE @et_listbox_lpein.
+
+* se cargan los tipo de formato de fecha para tener un mapeo con las dos claves de la tabla
+  SELECT DISTINCT
+                  prgbz,
+                  prgrs,
+                  prgtx
+                FROM tprg
+                WHERE spras EQ 'S'
+                INTO TABLE @et_tipo_fecha.
+ENDFORM.
+
+
+FORM excepciones_alv  TABLES it_fieldcat  TYPE  lvc_t_fcat
+*                             it_sort      TYPE   lvc_t_sort
+                             it_xclude    TYPE  ui_functions
+                       USING grid TYPE REF TO    cl_gui_alv_grid
+                             tabla.
+  DATA: s_fieldcat TYPE lvc_s_fcat.
+  CASE grid.
+    WHEN go_grid_eket. "grid de pantalla.
+      df_variant-handle = '001'.
+      CLEAR it_xclude[]. "Mostramos todos los botones del alv...
+      READ TABLE it_xclude TRANSPORTING NO FIELDS.
+      APPEND cl_gui_alv_grid=>mc_fc_find  TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_find_more  TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_delete_filter TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_filter TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print_back TO df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_print_prev TO df_xclude.
+
+*append cl_gui_alv_grid=>mc_fc_sum  to df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_count TO df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_average TO df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_maximum TO df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_minimum TO df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_subtot TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_auf TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_paste TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_paste_new_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_mb_view TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_views TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print_prev TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_grid TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_excel TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_crystal TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_lotus TO df_xclude.
+*      APPEND cl_gui_alv_grid=>mc_fc_send TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_abc TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_xint TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_expcrdesig TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_expcrtempl TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_mb_paste TO df_xclude.
+
+      APPEND cl_gui_alv_grid=>mc_fc_select_all TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_deselect_all TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_graph TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_info TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_f4 TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_report TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_check TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_refresh TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_cut TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_copy TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_undo TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_append_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_insert_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_delete_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_copy_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_reprep TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_chain TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_more TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_master_data TO df_xclude.
+
+
+      SET HANDLER go_event_handler->handle_hotspot_click   FOR grid.
+      READ TABLE it_fieldcat INTO s_fieldcat WITH KEY fieldname = 'EBELN'.
+      IF sy-subrc = 0.
+        s_fieldcat-hotspot = abap_true. MODIFY it_fieldcat FROM s_fieldcat INDEX sy-tabix.
+*        s_fieldcat-do_sum = abap_true.
+      ENDIF.
+
+*      Eliminación de ordenes pendientes
+      READ TABLE it_fieldcat ASSIGNING FIELD-SYMBOL(<lfs_fieldcat>) WITH KEY fieldname = gc_icon_d.
+      IF sy-subrc = 0.
+        <lfs_fieldcat>-hotspot = abap_true.
+
+        <lfs_fieldcat>-reptext = cl_wd_utilities=>get_otr_text_by_alias(
+                                                      EXPORTING
+                                                        alias      = 'ZGMM_GENERAL/ZMM_OTR_D_ORDENES_PEND'
+                                                        language   = 'S' ).
+*        para mostrar el ícono de ir al formulario
+        <lfs_fieldcat>-icon = abap_true.
+      ENDIF.
+
+*      Modificación de ordenes pendientes
+      READ TABLE it_fieldcat ASSIGNING <lfs_fieldcat> WITH KEY fieldname = gc_icon_u.
+      IF sy-subrc = 0.
+        <lfs_fieldcat>-hotspot = abap_true.
+
+        <lfs_fieldcat>-reptext = cl_wd_utilities=>get_otr_text_by_alias(
+                                                      EXPORTING
+                                                        alias      = 'ZGMM_GENERAL/ZMM_OTR_U_ORDENES_PEND'
+                                                        language   = 'S' ).
+*        para mostrar el ícono de ir al formulario
+        <lfs_fieldcat>-icon = abap_true.
+      ENDIF.
+*      Creación de órdenes pendientes
+      READ TABLE it_fieldcat ASSIGNING <lfs_fieldcat> WITH KEY fieldname = gc_icon_c.
+      IF sy-subrc = 0.
+        <lfs_fieldcat>-hotspot = abap_true.
+
+        <lfs_fieldcat>-reptext = cl_wd_utilities=>get_otr_text_by_alias(
+                                                      EXPORTING
+                                                        alias      = 'ZGMM_GENERAL/ZMM_OTR_C_ORDENES_PEND'
+                                                        language   = 'S' ).
+*        para mostrar el ícono de ir al formulario
+        <lfs_fieldcat>-icon = abap_true.
+      ENDIF.
+
+* CHECKBOX para seleccionar los pedidos
+      READ TABLE it_fieldcat ASSIGNING <lfs_fieldcat> WITH KEY fieldname = gc_check_box .
+      IF sy-subrc = 0.
+        <lfs_fieldcat>-checkbox = abap_true.
+        <lfs_fieldcat>-edit = abap_true.
+      ENDIF.
+    WHEN go_grid_mail.
+      CLEAR it_xclude[]. "Mostramos todos los botones del alv...
+      READ TABLE it_xclude TRANSPORTING NO FIELDS.
+      APPEND cl_gui_alv_grid=>mc_fc_find  TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_find_more  TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_delete_filter TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_filter TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print_back TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print_prev TO df_xclude.
+
+      APPEND cl_gui_alv_grid=>mc_fc_sum  TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_count TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_average TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_maximum TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_minimum TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_subtot TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_auf TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_paste TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_paste_new_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_mb_view TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_views TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_print_prev TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_grid TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_excel TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_crystal TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_view_lotus TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_send TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_abc TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_xint TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_expcrdesig TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_expcrtempl TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_mb_paste TO df_xclude.
+
+      APPEND cl_gui_alv_grid=>mc_fc_select_all TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_deselect_all TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_graph TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_info TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_f4 TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_report TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_check TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_refresh TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_cut TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_copy TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_undo TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_append_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_insert_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_delete_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_loc_copy_row TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_reprep TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_chain TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_more TO df_xclude.
+      APPEND cl_gui_alv_grid=>mc_fc_call_master_data TO df_xclude.
+
+
+
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Module STATUS_0200 OUTPUT
+*&---------------------------------------------------------------------*
+*& PBO dynpro 0200
+*&---------------------------------------------------------------------*
+MODULE status_0200 OUTPUT.
+
+  lv_title =  cl_wd_utilities=>get_otr_text_by_alias(
+                                                      EXPORTING
+                                                        alias      = 'ZGMM_GENERAL/ZMM_OTR_GET_CONFIRM__ORD_COMPRA'
+                                                        language   = 'S' ).
+  SET PF-STATUS '0200'. "EXCLUDING lt_botones_del.
+  SET TITLEBAR  '0200'  .
+
+**      SE CARGAN LOS DATOS DE EBTYP POR BD
+  IF gs_form_0200-lb_ebtyp IS INITIAL.
+    CALL FUNCTION 'VRM_SET_VALUES'
+      EXPORTING
+        id              = 'LB_EBTYP'
+        values          = gt_listbox_ebtyp
+      EXCEPTIONS
+        id_illegal_name = 1
+        OTHERS          = 2.
+  ENDIF.
+*      SE CARGAN LOS DATOS DE LPEIN POR BD
+  IF gs_form_0200-lb_lpein IS INITIAL.
+    CALL FUNCTION 'VRM_SET_VALUES'
+      EXPORTING
+        id              = 'LB_LPEIN'
+        values          = gt_listbox_lpein
+      EXCEPTIONS
+        id_illegal_name = 1
+        OTHERS          = 2.
+  ENDIF.
+
+  CASE gc_status.
+    WHEN gc_icon_u.
+*      lb_ebtyp             = gs_pedido-ebtyp.
+*      lb_lpein              = gs_pedido-lpein.
+*      txt_fecha_entrega     = gs_pedido-fecha_entrega.
+*      txt_cant_reparto      = gs_pedido-cantidad.
+      gs_form_0200-lb_ebtyp = gs_pedido-ebtyp.
+      gs_form_0200-lb_lpein = gs_pedido-lpein.
+      gs_form_0200-txt_eindt = gs_pedido-fecha_entrega.
+      gs_form_0200-txt_menge = gs_pedido-cantidad.
+      gs_form_0200-txt_precio = gs_pedido-precio.
+
+    WHEN gc_icon_c.
+*      al recargar, si no se ha pulsado el botón guardar , entonces se borran los campos para que se pueda editar
+*      la funcionalidad de ucomm sirve si está ahabilitado el filtro de verificación de si los datos son correctos
+      IF sy-ucomm NE gc_save.
+        CLEAR:
+              gs_form_0200-lb_ebtyp ,
+              gs_form_0200-lb_lpein ,
+              gs_form_0200-txt_eindt ,
+              gs_form_0200-txt_menge .
+*        aiempre va a estar con el valor del precio que trae desde la tabla EKPO
+        gs_form_0200-txt_precio = gs_pedido-precio.
+      ENDIF.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       Botonería dynpro 0200
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+*  DATA: lt_errores TYPE bapiret2_t.
+*  DATA(lv_error) = abap_false .
+
+  CASE sy-ucomm.
+    WHEN 'BACK'. LEAVE TO SCREEN 0.
+    WHEN 'EXIT'. LEAVE TO SCREEN 0.
+    WHEN 'CANCEL'. LEAVE TO SCREEN 0.
+    WHEN 'REFRESH'. PERFORM f_main.
+    WHEN 'SAVE'.
+
+      LEAVE TO SCREEN 0.
+*    WHEN gc_reclamar. PERFORM f_enviar USING gc_reclamar.
+*    WHEN gc_confirm. PERFORM f_enviar USING gc_confirm.
+
+  ENDCASE.
+ENDMODULE.
+
+**&---------------------------------------------------------------------*
+**& Form ITEM_SEL
+**&---------------------------------------------------------------------*
+**& text
+**&---------------------------------------------------------------------*
+**& -->  p1        text
+**& <--  p2        text
+**&---------------------------------------------------------------------*
+*FORM item_sel .
+*  CALL SCREEN 0300 STARTING AT 4  4.
+*  CASE sy-subrc.
+*    WHEN 0. "REFRESCAR LA LINEA EN CUESTION...
+*    WHEN 4.
+*  ENDCASE.
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_CALL_FORM_0200
+*&---------------------------------------------------------------------*
+*& Llama a la dynpro 0200
+*&---------------------------------------------------------------------*
+FORM f_call_form_0200 .
+  READ TABLE gt_data ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX gv_alv_index. "iv_index.
+  CHECK sy-subrc EQ 0.
+
+  CASE gc_status.
+    WHEN gc_icon_u.
+      CLEAR gs_pedido.
+
+      CHECK <lfs_data>-u_form_icon NE ''.
+
+      PERFORM f_get_pedido USING gv_alv_index
+                               gt_data
+                         CHANGING gs_pedido.
+
+      CALL SCREEN 0200 STARTING AT 4  4.
+      IF sy-subrc EQ 0.
+**        actualiza y refresca la línea
+        PERFORM f_procesar_0200 USING     gv_alv_index
+                                          gs_form_0200
+                                          gc_status
+                                          gt_data
+                                CHANGING  gs_pedido.
+
+*      IF gc_status EQ gc_icon_u.
+*        MESSAGE i004(zme_msg) WITH gs_data-ebeln gs_data-ebelp  .
+        PERFORM f_actualizar_linea USING    gv_alv_index
+                                          gs_pedido
+                                          gc_status
+                                 CHANGING gt_data.
+        go_grid_eket->refresh_table_display( ).
+*      ENDIF.
+
+      ELSE.
+***    ERROR
+      ENDIF.
+
+
+    WHEN gc_icon_c.
+*      obtengo el precio para luego modificarlo
+      PERFORM f_get_pedido USING gv_alv_index
+                               gt_data
+                         CHANGING gs_pedido.
+      CLEAR:  gs_pedido-cantidad,
+              gs_pedido-ebtyp,
+              gs_pedido-etens,
+              gs_pedido-fecha_entrega,
+              gs_pedido-lpein,
+              gs_pedido-ref.
+
+**      si no tiene el control de confirmaciones asignado
+**      READ TABLE gt_data ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX gv_alv_index.
+*      IF <lfs_data>-bstae EQ ''.
+*        MESSAGE e013(zme_msg). "WITH <lfs_data>-ebeln .
+*      ENDIF.
+
+      CALL SCREEN 0200 STARTING AT 4  4.
+      IF sy-subrc EQ 0.
+*          crea y refresca una nueva línea en el formulario
+        PERFORM f_procesar_0200 USING     gv_alv_index
+                                          gs_form_0200
+                                          gc_status
+                                CHANGING  gt_data
+                                          gs_pedido.      .
+
+*        MESSAGE i006(zme_msg) WITH gs_data-ebeln gs_data-ebelp  .
+        PERFORM f_actualizar_linea USING    gv_alv_index
+                                          gs_pedido
+                                          gc_status
+                                 CHANGING gt_data.
+        go_grid_eket->refresh_table_display( ).
+*      ENDIF.
+      ELSE.
+***    ERROR
+      ENDIF.
+
+    WHEN gc_icon_d.
+      DATA: lt_errores TYPE bapiret2_t,
+            lv_answer  TYPE c.
+
+      CHECK <lfs_data>-d_form_icon NE ''.
+
+      DATA(lv_titulo_msg) = cl_wd_utilities=>get_otr_text_by_alias(
+                                                    EXPORTING
+                                                      alias      = 'ZGMM_GENERAL/ZMM_OTR_TITULO_DELETE_DIALOG'
+                                                      language   = 'S' ).
+
+      DATA(lv_pregunta_msg) = cl_wd_utilities=>get_otr_text_by_alias(
+                                                    EXPORTING
+                                                      alias      = 'ZGMM_GENERAL/ZMM_OTR_PREGUNTA_DELETE_DIALOG'
+                                                      language   = 'S' ).
+
+      CALL FUNCTION 'POPUP_TO_CONFIRM'
+        EXPORTING
+          titlebar       = lv_titulo_msg
+*         DIAGNOSE_OBJECT             = ' '
+          text_question  = lv_pregunta_msg
+          text_button_1  = 'Sí'
+          icon_button_1  = 'No'
+*         TEXT_BUTTON_2  = 'Nein'(002)
+*         ICON_BUTTON_2  = ' '
+*         DEFAULT_BUTTON = '1'
+*         DISPLAY_CANCEL_BUTTON       = 'X'
+*         USERDEFINED_F1_HELP         = ' '
+*         START_COLUMN   = 25
+*         START_ROW      = 6
+*         POPUP_TYPE     =
+*         IV_QUICKINFO_BUTTON_1       = ' '
+*         IV_QUICKINFO_BUTTON_2       = ' '
+        IMPORTING
+          answer         = lv_answer
+*         TABLES
+*         PARAMETER      =
+        EXCEPTIONS
+          text_not_found = 1
+          OTHERS         = 2.
+      CHECK sy-subrc EQ 0
+            AND lv_answer EQ '1'.
+
+      PERFORM f_update_pedido USING gv_alv_index "e_row_id-index
+                                  gc_status
+                                  gt_data
+                            CHANGING gs_pedido. " no se usa      .
+
+      MESSAGE i001(zme_msg) WITH <lfs_data>-ebeln <lfs_data>-ebelp  .
+
+      PERFORM f_actualizar_linea USING    gv_alv_index
+                                          gs_pedido
+                                          gc_status
+                                 CHANGING gt_data.
+      go_grid_eket->refresh_table_display( ).
+
+  ENDCASE.
+
+*    limpia datos de memoria
+  CLEAR: gs_pedido,
+          gs_form_0200.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form GET_PEDIDO
+*&---------------------------------------------------------------------*
+*& Obtiene el pedido desde las tablas del sistema
+*&---------------------------------------------------------------------*
+FORM f_get_pedido  USING    iv_index   TYPE lvc_index
+                          it_data   TYPE gty_eket
+                 CHANGING es_pedido TYPE gsy_pedido.
+
+  DATA: lt_conf_pedidos TYPE bapiekes_tp,
+        lt_bapiret2     TYPE bapiret2_t,
+        lt_po_item      TYPE STANDARD TABLE OF bapimepoitem.
+*    se obtiene el registro en el cuál se realiza click en el listado
+  READ TABLE it_data ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX iv_index.
+  CHECK sy-subrc EQ 0.
+
+  CALL FUNCTION 'BAPI_PO_GETDETAIL1'
+    EXPORTING
+      purchaseorder  = <lfs_data>-ebeln
+*     ACCOUNT_ASSIGNMENT       = ' '
+*     ITEM_TEXT      = ' '
+*     HEADER_TEXT    = ' '
+*     DELIVERY_ADDRESS         = ' '
+*     VERSION        = ' '
+*     SERVICES       = ' '
+*     SERIALNUMBERS  = ' '
+*     INVOICEPLAN    = ' '
+*      IMPORTING
+*     POHEADER       =
+*     POEXPIMPHEADER =
+    TABLES
+      return         = lt_bapiret2
+      poitem         = lt_po_item
+*     POADDRDELIVERY =
+*     poschedule     = lt_conf_pedidos
+*     POACCOUNT      =
+*     POCONDHEADER   =
+*     POCOND         =
+*     POLIMITS       =
+*     POCONTRACTLIMITS         =
+*     POSERVICES     =
+*     POSRVACCESSVALUES        =
+*     POTEXTHEADER   =
+*     POTEXTITEM     =
+*     POEXPIMPITEM   =
+*     POCOMPONENTS   =
+*     POSHIPPINGEXP  =
+*     POHISTORY      =
+*     POHISTORY_TOTALS         =
+      poconfirmation = lt_conf_pedidos
+*     ALLVERSIONS    =
+*     POPARTNER      =
+*     EXTENSIONOUT   =
+*     SERIALNUMBER   =
+*     INVPLANHEADER  =
+*     INVPLANITEM    =
+*     POHISTORY_MA   =
+    .
+  READ TABLE lt_po_item ASSIGNING FIELD-SYMBOL(<lfs_po_item>) WITH KEY po_item = <lfs_data>-ebelp.
+  IF sy-subrc EQ 0.
+    es_pedido-precio          = <lfs_po_item>-net_price.
+  ENDIF.
+
+  READ TABLE lt_conf_pedidos ASSIGNING FIELD-SYMBOL(<lfs_conf_pedido>) WITH KEY po_item = <lfs_data>-ebelp
+                                                                                conf_ser = <lfs_data>-etens .
+  IF sy-subrc EQ 0.
+    es_pedido-ebtyp = <lfs_conf_pedido>-conf_type.
+    es_pedido-lpein = <lfs_conf_pedido>-del_datcat.
+    es_pedido-ref = <lfs_conf_pedido>-ext_doc_long.
+*      es_pedido-fecha_entrega  = <lfs_conf_pedido>-delivery_date+6(4) &&  <lfs_conf_pedido>-delivery_date+3(2) &&  <lfs_conf_pedido>-delivery_date+0(2).
+    es_pedido-fecha_entrega  = <lfs_conf_pedido>-deliv_date.
+    es_pedido-cantidad       = <lfs_conf_pedido>-quantity.
+    es_pedido-etens          = <lfs_conf_pedido>-conf_ser.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form UPDATE_PEDIDO
+*&---------------------------------------------------------------------*
+*& Actualiza la confirmación en BD
+*&---------------------------------------------------------------------*
+FORM f_update_pedido  USING    iv_alv_index TYPE lvc_index
+                             ic_status
+                              it_data       TYPE gty_eket
+                    CHANGING  is_pedido    TYPE gsy_pedido.
+  DATA: "lt_conf_pedidos  TYPE bapiekes_tp,
+    lt_bapiret2 TYPE bapiret2_t,
+    lt_ekes     TYPE gty_ekes,
+    lt_xekes    TYPE mmpr_uekes,
+    lt_yekes    TYPE mmpr_uekes,
+    ls_xekes    TYPE uekes,
+    ls_yekes    TYPE uekes.
+  DATA: lt_conf_pedidosx TYPE bapimeposchedulx_tp.
+  DATA lv_index TYPE numc2.
+  DATA(lv_error) = abap_false.
+
+*    se obtiene el registro en el cuál se realiza click en el listado
+  READ TABLE it_data ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX iv_alv_index. "i_index.
+  CHECK sy-subrc EQ 0.
+* Si no tiene tipo de confirmación de control
+  IF <lfs_data>-bstae IS INITIAL.
+*  si ha sido eliminado desde alguna transacción sap se elimina el tipo de control de confirmación, de modo que, hay que volverlo a guardar en la cabecera EKPO
+    PERFORM f_asignar_tipo_control USING <lfs_data>
+                                   CHANGING lt_bapiret2 .
+  ENDIF.
+  LOOP AT lt_bapiret2 ASSIGNING FIELD-SYMBOL(<lfs_bapiret2>) WHERE type = gc_e
+*    664= no se ha podido realizar la modificación de contrl confirm
+                                                                   OR number = '664'
+                                                                   OR number = '022'.
+*    022: No se han modificado datos
+
+    DATA(lv_titulo) = cl_wd_utilities=>get_otr_text_by_alias(
+                                                                EXPORTING
+                                                                  alias      = 'ZGMM_GENERAL/ZMM_OTR_CONTROL_TIPO_CONFIRMACION'
+                                                                  language   = 'S' ).
+
+    CALL METHOD zcl_utilities=>show_info_dialog_from_bapiret2
+      EXPORTING
+        iv_titulo   = lv_titulo
+        it_bapiret2 = lt_bapiret2.
+    lv_error = abap_true.
+    EXIT.
+  ENDLOOP.
+  CHECK lv_error IS INITIAL.
+
+  SELECT *
+    FROM ekes
+    INTO TABLE lt_ekes
+    WHERE ebeln EQ <lfs_data>-ebeln
+          AND ebelp EQ <lfs_data>-ebelp.
+
+  CASE ic_status.
+
+*    En caso de la modificación, se cambia el ebtyp de la línea EKES actual y se agrega una nueva "AB" o "BA"
+    WHEN gc_icon_u.
+      DATA ls_pedido_ch TYPE gsy_pedido.
+*      obtengo el índice desde donde estoy realizando la actualización
+      READ TABLE lt_ekes ASSIGNING FIELD-SYMBOL(<lfs_ekes>) WITH KEY etens = <lfs_data>-etens.
+      CHECK sy-subrc EQ 0.
+      DATA(lv_index_to_del) = sy-tabix.
+
+*    se realiza la modificación de este campo para que se efectúen los cambios en la transacción MD04
+      DESCRIBE TABLE lt_ekes LINES lv_index.
+*    se suma 1 para que haga referencia a la línea a ctual a introducir el ekes
+      ADD 1 TO lv_index.
+
+      ls_pedido_ch-ebtyp = gc_ch.
+      ls_pedido_ch-cantidad = <lfs_ekes>-menge.
+      ls_pedido_ch-fecha_entrega = <lfs_ekes>-eindt.
+      ls_pedido_ch-lpein = <lfs_ekes>-lpein.
+      ls_pedido_ch-ref = <lfs_ekes>-xblnr.
+
+      PERFORM f_corregir_md04 USING <lfs_data>
+                                      ls_pedido_ch
+                                      lv_index. "<lfs_data>.
+*      Se introduce en la línea siguiente
+      ADD 1 TO lv_index.
+      PERFORM f_corregir_md04 USING <lfs_data>
+                                      is_pedido
+                                      lv_index. "<lfs_data>.
+
+*** Se elimina el registro anteriormente seleccionado
+      MOVE-CORRESPONDING <lfs_ekes> TO ls_yekes.
+      ls_yekes-kz = gc_d.
+*      IF ls_xekes IS NOT INITIAL.
+*        APPEND ls_xekes TO lt_xekes.
+*      ENDIF.
+      IF ls_yekes IS NOT INITIAL.
+        APPEND ls_yekes TO lt_yekes.
+      ENDIF.
+
+********* PARA ELIMINAR EL REGISTRO ANTERIOR
+*    actualiza, inserta o elimina datos en la ekes (tabla de confirmaciones)
+      CALL FUNCTION 'ME_CONFIRMATION_UPDATE'
+        EXPORTING
+          i_ebeln = <lfs_data>-ebeln
+        TABLES
+*        tabla xekes de actualización/insert, si no hay nada no se realiza ninguna acción de estas dos
+          xekes   = lt_xekes
+*        tabla de eliminación, si no hay nada no se elimina nada
+          yekes   = lt_yekes.
+**************
+***
+
+
+    WHEN    gc_icon_c.
+*    se realiza la modificación de este campo para que se efectúen los cambios en la transacción MD04
+      DESCRIBE TABLE lt_ekes LINES lv_index.
+*    se suma 1 para que haga referencia a la línea a ctual a introducir el ekes
+      ADD 1 TO lv_index.
+      PERFORM f_corregir_md04 USING <lfs_data>
+                                      is_pedido
+                                      lv_index. "<lfs_data>.
+
+    WHEN gc_icon_d.
+      READ TABLE lt_ekes ASSIGNING <lfs_ekes> WITH KEY etens = <lfs_data>-etens.
+      CHECK sy-subrc EQ 0.
+      MOVE-CORRESPONDING <lfs_ekes> TO ls_yekes.
+      ls_yekes-kz = gc_d.
+
+      IF ls_yekes IS NOT INITIAL.
+        APPEND ls_yekes TO lt_yekes.
+      ENDIF.
+
+********* PARA ACTUALIZAR
+
+*    actualiza, inserta o elimina datos en la ekes (tabla de confirmaciones)
+      CALL FUNCTION 'ME_CONFIRMATION_UPDATE'
+        EXPORTING
+          i_ebeln = <lfs_data>-ebeln
+        TABLES
+*        tabla xekes de actualización/insert, si no hay nada no se realiza ninguna acción de estas dos
+          xekes   = lt_xekes
+*        tabla de eliminación, si no hay nada no se elimina nada
+          yekes   = lt_yekes.
+**************
+
+  ENDCASE.
+
+
+*  IF ic_status EQ gc_icon_c.
+**    se realiza la modificación de este campo para que se efectúen los cambios en la transacción MD04
+*    DESCRIBE TABLE lt_ekes LINES lv_index.
+**    se suma 1 para que haga referencia a la línea a ctual a introducir el ekes
+*    ADD 1 TO lv_index.
+*    PERFORM f_corregir_md04 USING <lfs_data>
+*                                    is_pedido
+*                                    lv_index. "<lfs_data>.
+*  ENDIF.
+
+*    si todo ha ido bien, se guardan los datos de forma persistente
+*  COMMIT WORK.
+  APPEND INITIAL LINE TO lt_bapiret2 ASSIGNING FIELD-SYMBOL(<lfs_bapiret>).
+  CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+    EXPORTING
+      wait   = abap_true
+    IMPORTING
+      return = <lfs_bapiret>.
+
+
+ENDFORM.
+**&---------------------------------------------------------------------*
+**& Form GET_LAST_EKET
+**&---------------------------------------------------------------------*
+**& Obtiene número secuencial de confirmación de proveedor más grande (el etens de la última orden de confirmación gener
+**&---------------------------------------------------------------------*
+*FORM get_last_eket  USING    it_ekes TYPE  gty_ekes
+*                             i_pos   TYPE  ebelp
+*                    CHANGING e_etens TYPE  etens.
+*  LOOP AT it_ekes ASSIGNING FIELD-SYMBOL(<lfs_ekes>) WHERE ebelp EQ i_pos.
+*    CHECK <lfs_ekes>-etens > e_etens.
+*    e_etens = <lfs_ekes>-etens.
+*  ENDLOOP.
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_PROCESAR_0200
+*&---------------------------------------------------------------------*
+*& Procesa los datos introducidos en el formulario de la screen 0200
+*&---------------------------------------------------------------------*
+FORM f_procesar_0200  USING     i_index       TYPE lvc_index
+                                is_form_0200  TYPE gsy_form_fields
+                                ic_status
+                      CHANGING  et_data       TYPE gty_eket
+                                es_pedido     TYPE gsy_pedido.
+*  DATA ls_pedido TYPE gsy_pedido.
+  DATA lt_fields_tab   TYPE TABLE OF dynpread.
+
+**      se verifica si está correcto
+*      PERFORM f_verificar_campos USING    txt_cant_reparto
+*                                          txt_fecha_entrega
+*                                 CHANGING lv_error.
+*      CHECK lv_error IS INITIAL.
+  es_pedido-cantidad  = is_form_0200-txt_menge. "txt_cant_reparto.
+  es_pedido-fecha_entrega = is_form_0200-txt_eindt. "txt_fecha_entrega.
+  es_pedido-ref           = is_form_0200-txt_ref. "referencia
+  es_pedido-ebtyp = is_form_0200-lb_ebtyp.  "lb_ebtyp.
+  es_pedido-lpein = is_form_0200-lb_lpein.  "lb_lpein.
+  es_pedido-precio = is_form_0200-txt_precio.  "
+
+  PERFORM f_update_pedido USING     i_index
+                                  ic_status
+                                  et_data
+                                  es_pedido.
+*  Se actualiza el precio en la EKPO
+  PERFORM f_update_precio USING     i_index
+                                  ic_status
+                                  es_pedido
+                        CHANGING  et_data.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form ACTUALIZAR_LINEA
+*&---------------------------------------------------------------------*
+*& Se actualiza la línea en el listado del ALV
+*&---------------------------------------------------------------------*
+FORM f_actualizar_linea  USING    i_alv_index   TYPE lvc_index
+                                is_pedido  TYPE gsy_pedido
+                                i_status
+                       CHANGING et_data       TYPE gty_eket.
+  DATA: ls_data_c LIKE LINE OF et_data,
+        lt_data_c TYPE zme_tt_ordenes_pendientes.
+
+  DATA lt_index_rows  TYPE lvc_t_row.
+  DATA: lv_id_c TYPE icon_d,
+        lv_id_u TYPE icon_d,
+        lv_id_d TYPE icon_d.
+*        lt_t163f TYPE gty_tipo_conf_txt.
+  DATA lv_index_new TYPE syst-tabix.
+
+**  Se libera memoria dle buffer
+*  CALL FUNCTION 'STATUS_BUFFER_REFRESH'
+*    EXPORTING
+*      i_free = abap_true.
+
+  READ TABLE et_data INTO DATA(ls_data) INDEX i_alv_index.
+  CHECK sy-subrc EQ 0.
+
+  CALL METHOD zcl_utilities=>get_icons(
+    IMPORTING
+      e_id_c = lv_id_c
+      e_id_u = lv_id_u
+      e_id_d = lv_id_d ).
+  DATA(lt_t163f) = zcl_utilities=>get_texto_tipo_confirmacion( ).
+
+
+*  PERFORM get_icons CHANGING  lv_id_c
+*                              lv_id_u
+*                              lv_id_d.
+*  PERFORM get_texto_tipo_confirmacion CHANGING lt_t163f.
+
+
+
+  CASE i_status.
+    WHEN gc_icon_u.
+
+      PERFORM f_actualizar_lineas USING    i_alv_index
+                                  CHANGING et_data.
+*
+*      CALL FUNCTION 'ZME_GET_LINEA_ORDEN_PEND'
+*        EXPORTING
+*          i_ebeln           = ls_data-ebeln
+*          i_ebelp           = ls_data-ebelp
+***          SE PASA VACÍO PORQUE EL CH NUNCA LO OBTENDRÁ Y SE QUIERE ES EL VALOR AB O BA INTRODUCIDO
+*          i_etens           = '0000' "is_pedido-etens
+**          i_is_confirmacion = abap_true
+*        IMPORTING
+*          et_data           = lt_data_c.
+*
+*      LOOP AT et_data ASSIGNING FIELD-SYMBOL(<lfs_data_del>).
+*        IF <lfs_data_del>-ebeln EQ ls_data-ebeln
+*         AND <lfs_data_del>-ebelp eq ls_data-ebelp.
+*          DELETE et_data INDEX sy-tabix.
+*        ENDIF.
+*      ENDLOOP.
+*
+*      lv_index_new = i_alv_index.
+*      LOOP AT lt_data_c ASSIGNING FIELD-SYMBOL(<lfs_data_c>).
+*        MOVE-CORRESPONDING <lfs_data_c> TO ls_data.
+*        INSERT ls_data INTO et_data INDEX lv_index_new.
+*        ADD 1 TO lv_index_new        .
+*      ENDLOOP.
+
+    WHEN gc_icon_c.
+*      CALL FUNCTION 'ZME_GET_LINEA_ORDEN_PEND'
+*        EXPORTING
+*          i_ebeln = <lfs_data>-ebeln
+*          i_ebelp = <lfs_data>-ebelp
+*          i_etens = is_pedido-etens
+*        IMPORTING
+*          es_data = ls_data_c.
+      CALL FUNCTION 'ZME_GET_LINEA_ORDEN_PEND'
+        EXPORTING
+          i_ebeln = ls_data-ebeln
+          i_ebelp = ls_data-ebelp
+          i_etens = is_pedido-etens
+*         i_is_confirmacion = abap_true
+        IMPORTING
+          et_data = lt_data_c.
+      READ TABLE lt_data_c INTO ls_data_c INDEX 1.
+*      IF ls_data_c IS NOT INITIAL.
+*        <lfs_data> = ls_data_c .
+*      ENDIF.
+
+
+*      si retorna la línea vacía es que no sirve para insertarla en el listado
+      PERFORM f_check_linea_en_listado USING    et_data
+                                       CHANGING ls_data_c.
+
+**      Si la línea originalmente no ha tenido confirmación alguna, no tiene datos de ekes, por tanto no debe existir en el listado
+      IF ls_data_c IS NOT INITIAL
+*        por el tipo de confirmación sé si es una línea de confirmación o es la original de reparto que se toma para solo mostrar los datos y poder crear líneas de confirmación
+       AND  ls_data         IS INITIAL.
+*        AND  <lfs_data>-xblnr     IS INITIAL
+*        AND <lfs_data>-ekes_eindt IS INITIAL
+*        AND <lfs_data>-ekes_menge IS INITIAL
+*        AND <lfs_data>-etens      IS INITIAL.
+        DELETE et_data INDEX i_alv_index.
+      ENDIF.
+**        Se actualiza la línea seleccionada
+      LOOP AT lt_data_c ASSIGNING FIELD-SYMBOL(<lfs_data_c>).
+        READ TABLE et_data ASSIGNING FIELD-SYMBOL(<lfs_e_data>) WITH KEY ebeln = <lfs_data_c>-ebeln
+                                                                         ebelp = <lfs_data_c>-ebelp
+                                                                         etens = <lfs_data_c>-etens.
+        IF sy-subrc EQ 0.
+          <lfs_e_data> = <lfs_data_c>.
+        ELSE.
+          INSERT <lfs_data_c> INTO et_data INDEX i_alv_index.
+        ENDIF.
+      ENDLOOP.
+*      IF ls_data_c IS NOT INITIAL.
+*        INSERT ls_data_c INTO et_data INDEX i_alv_index.
+*      ENDIF.
+
+*    WHEN gc_icon_c.
+*      ls_data_c             = <lfs_data>.
+*      ls_data_c-ebtyp       = is_pedido-ebtyp.
+*      ls_data_c-lpein       = is_pedido-lpein.
+*      ls_data_c-xblnr       = is_pedido-ref.
+*      ls_data_c-ekes_eindt  = is_pedido-fecha_entrega.
+*      ls_data_c-ekes_menge  = is_pedido-cantidad.
+*      ls_data_c-etens       = is_pedido-etens. " PORQUE SE HA GENERADO UN ETENS NUEVO
+*      ls_data_c-u_form_icon = lv_id_u. "gs_form_icon_u-id.
+*      ls_data_c-d_form_icon = lv_id_d. "gs_form_icon_d-id.
+**      Si la línea originalmente no ha tenido confirmación alguna, no tiene datos de ekes, por tanto no debe existir en el listado
+*      IF <lfs_data>-ebtyp         IS INITIAL
+*        AND  <lfs_data>-xblnr     IS INITIAL
+*        AND <lfs_data>-ekes_eindt IS INITIAL
+*        AND <lfs_data>-ekes_menge IS INITIAL
+*        AND <lfs_data>-etens      IS INITIAL.
+*        DELETE et_data INDEX i_alv_index.
+*      ENDIF.
+**        Se inserta la línea sobre aquella que se habría seleccionado
+*      READ TABLE lt_t163f ASSIGNING FIELD-SYMBOL(<lfs_t163f>) WITH KEY ebtyp = ls_data_c-ebtyp.
+*      IF sy-subrc EQ 0.
+*        ls_data_c-ebtxt = <lfs_t163f>-ebtxt.
+*      ENDIF.
+*      INSERT ls_data_c INTO et_data INDEX i_alv_index.
+*    WHEN gc_icon_u.
+*      <lfs_data>-ebtyp = is_pedido-ebtyp.
+*      <lfs_data>-lpein = is_pedido-lpein.
+*      <lfs_data>-xblnr      = is_pedido-ref.
+*      <lfs_data>-ekes_eindt = is_pedido-fecha_entrega.
+*      <lfs_data>-ekes_menge = is_pedido-cantidad.
+**        Se actualiza la línea actual seleccionada
+*      READ TABLE lt_t163f ASSIGNING <lfs_t163f> WITH KEY ebtyp = is_pedido-ebtyp.
+*      IF sy-subrc EQ 0.
+*        <lfs_data>-ebtxt = <lfs_t163f>-ebtxt.
+*      ENDIF.
+*
+*      APPEND INITIAL LINE TO lt_index_rows ASSIGNING FIELD-SYMBOL(<lfs_index>).
+*      <lfs_index>-index = i_alv_index.
+**      <lfs_index>-rowtype
+*      DATA et_index_rows TYPE lvc_t_row.
+*      DATA et_row_no TYPE  lvc_t_roid .
+*      go_grid_eket->get_selected_rows( IMPORTING
+*                  et_index_rows = et_index_rows
+*                  et_row_no = et_row_no
+*
+*       ).
+    WHEN gc_icon_d.
+*        elimina la  línea de la tabla interna que se ha seleccionado para eliminar.
+      DELETE et_data INDEX i_alv_index.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_ASIGNAR_TIPO_CONTROL
+*&---------------------------------------------------------------------*
+*& permite agregar el tipo de control de confirmación si no existe en la EKPO
+*&---------------------------------------------------------------------*
+*&      --> <LFS_DATA>
+*&---------------------------------------------------------------------*
+FORM f_asignar_tipo_control  USING    is_data     TYPE gsy_eket
+                             CHANGING et_bapiret2 TYPE  bapiret2_t.
+  DATA: lt_conf_pedidos TYPE  bapiekes_tp,
+        lt_bapiret2     TYPE  bapiret2_t,
+        ls_bapiret2     LIKE LINE OF lt_bapiret2,
+        lt_po_item      TYPE STANDARD TABLE OF bapimepoitem,
+        lt_po_schedule  TYPE STANDARD TABLE OF bapimeposchedule,
+        lt_po_itemx     TYPE STANDARD TABLE OF bapimepoitemx,
+        ls_po_item      TYPE bapimepoitem.
+***  Verificación del control de confirmación e inserción del mismo
+*  Se obtienen los pedidos y los repartos
+  CALL FUNCTION 'BAPI_PO_GETDETAIL1'
+    EXPORTING
+      purchaseorder = is_data-ebeln
+    TABLES
+      return        = et_bapiret2
+      poitem        = lt_po_item
+      poschedule    = lt_po_schedule.
+*          poconfirmation = lt_po_confirmation.
+
+*   Si no hay errores
+  CHECK et_bapiret2 IS INITIAL.
+
+* obtengo la posición a tratar
+  READ TABLE lt_po_item INTO ls_po_item WITH KEY po_item = is_data-ebelp.
+  CHECK sy-subrc EQ 0.
+  ls_po_item-conf_ctrl = gc_tipo_confirmacion .
+*  limpio la tabla y agrego la posición a tratar
+  CLEAR lt_po_item.
+  APPEND ls_po_item TO lt_po_item.
+*  le indico a la BAPI cuáles son los datos de la posición a tratar
+  APPEND INITIAL LINE TO lt_po_itemx ASSIGNING FIELD-SYMBOL(<lfs_po_itemx>).
+  <lfs_po_itemx>-po_item = ls_po_item-po_item.
+*  <lfs_po_itemx>-net_price = abap_true.
+
+*  LOOP AT lt_po_item ASSIGNING FIELD-SYMBOL(<lfs_po_item>).
+**        si no es la posición que necesito tratar, la elimino
+*    IF <lfs_po_item>-po_item NE is_data-ebelp.
+*      DELETE lt_po_item INDEX sy-tabix..
+*      CONTINUE.
+*    ENDIF.
+*
+*    <lfs_po_item>-conf_ctrl = gc_tipo_confirmacion .
+*
+*    APPEND INITIAL LINE TO lt_po_itemx ASSIGNING FIELD-SYMBOL(<lfs_po_itemx>).
+*    <lfs_po_itemx>-po_item = <lfs_po_item>-po_item.
+**        <lfs_po_itemx>-acknowl_no = abap_true.
+*    <lfs_po_itemx>-conf_ctrl = abap_true.
+**        <lfs_po_itemx>-trackingno = abap_true.
+*  ENDLOOP.
+  CALL FUNCTION 'BAPI_PO_CHANGE'
+    EXPORTING
+      purchaseorder = is_data-ebeln
+    TABLES
+      return        = et_bapiret2
+      poitem        = lt_po_item
+      poitemx       = lt_po_itemx.
+
+*    PERMITE REALIZAR COMMIT
+*  COMMIT WORK.
+  CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+    EXPORTING
+      wait   = abap_true
+    IMPORTING
+      return = ls_bapiret2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_CORREGIR_MD04
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> <LFS_DATA>
+*&---------------------------------------------------------------------*
+FORM f_corregir_md04  USING   ps_data TYPE gsy_eket
+                              ps_pedido TYPE gsy_pedido
+                              pv_index.
+  DATA: modo TYPE c VALUE 'E'.
+  DATA: lt_poitem TYPE bapimepoitem_tp..
+  DATA lt_bapiret2 TYPE bapiret2_t.
+
+*  PERFORM f_get_posiciones USING          ps_data
+*                           CHANGING      lt_poitem
+  CLEAR bdc_tab[].
+
+
+  PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+  PERFORM bdc_field       USING 'BDC_OKCODE'
+                                '=TABIDT18'.
+  PERFORM bdc_field       USING 'MEPO_TOPLINE-BSART'
+                                'NB'.
+  PERFORM bdc_field       USING 'DYN_6000-LIST'
+                                '   1'.
+  PERFORM bdc_field       USING 'BDC_CURSOR'
+                                'MEPO1319-MATKL'.
+*perform bdc_field       using 'MEPO1319-REVLV'
+*                              '01'.
+  PERFORM bdc_field       USING 'MEPO1319-SPINF'
+                                'X'.
+  PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+  PERFORM bdc_field       USING 'BDC_OKCODE'
+                                '/00'.
+  PERFORM bdc_field       USING 'MEPO_TOPLINE-BSART'
+                                'NB'.
+  PERFORM bdc_field       USING 'DYN_6000-LIST'
+                                '   1'.
+  PERFORM bdc_field       USING 'MEPO1334-BSTAE'
+                                gc_tipo_confirmacion. "'Z001'.
+*  PERFORM bdc_field       USING 'BDC_CURSOR'
+*                                'EKES-XBLNR(01)'.
+*  PERFORM bdc_field       USING 'EKES-EBTYP(01)'
+  DATA(lv_txt_ebtyp) = 'EKES-EBTYP('  && pv_index && ')'.
+  PERFORM bdc_field       USING lv_txt_ebtyp
+                                ps_pedido-ebtyp. "'AB'.
+  READ TABLE gt_tipo_fecha  ASSIGNING FIELD-SYMBOL(<lfs_tipo_fecha>) WITH KEY prgrs = ps_pedido-lpein.
+  IF sy-subrc EQ 0.
+    DATA(lv_txt_lpein) = 'RM06E-LPEIN('  && pv_index && ')'.
+    PERFORM bdc_field       USING lv_txt_lpein
+                                  <lfs_tipo_fecha>-prgbz. "'D'.
+  ENDIF.
+
+  DATA lv_fecha(10) TYPE c.
+*  DATA(lv_fecha) = ps_pedido-fecha_entrega+6(2) && '.' && ps_pedido-fecha_entrega+4(2) && '.' && ps_pedido-fecha_entrega+0(4).
+  WRITE ps_pedido-fecha_entrega TO lv_fecha LEFT-JUSTIFIED.
+*  la cantidad se convierte  a string para que no aparezca la advertencia de longitud del campo
+  DATA lv_cantidad(13) TYPE c.
+*  lv_cantidad  = CONV string( ps_pedido-cantidad ).
+  WRITE ps_pedido-cantidad TO lv_cantidad LEFT-JUSTIFIED.
+  DATA(lv_txt_eeind) = 'RM06E-EEIND('  && pv_index && ')'.
+  PERFORM bdc_field       USING lv_txt_eeind  "'RM06E-EEIND(01)'
+                                lv_fecha. "'01.07.2022'.
+
+  DATA(lv_txt_menge) = 'EKES-MENGE('  && pv_index && ')'.
+  PERFORM bdc_field       USING lv_txt_menge   "'EKES-MENGE(01)'
+                                lv_cantidad. "ps_pedido-cantidad. "'40,600'. "lv_cantidad.               "'50000'.
+  DATA(lv_txt_xblnr) = 'EKES-XBLNR('  && pv_index && ')'.
+  PERFORM bdc_field       USING lv_txt_xblnr   "'EKES-XBLNR(01)'
+                                ps_pedido-ref. "'ref'.
+
+* SE GUARDA
+  PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+  PERFORM bdc_field       USING 'BDC_OKCODE' '=MESAVE'.
+
+
+  PERFORM bdc_dynpro      USING 'SAPLMEGUI' '0014'.
+  PERFORM bdc_field       USING 'BDC_OKCODE' '=MEBACK'.
+
+  CALL TRANSACTION 'ME22N' USING bdc_tab
+                             MODE modo
+                             MESSAGES INTO itab
+                             UPDATE 'S'.
+
+  LOOP AT itab ASSIGNING FIELD-SYMBOL(<lfs_itab>) WHERE msgtyp NE 'S'.
+    APPEND INITIAL LINE TO lt_bapiret2 ASSIGNING FIELD-SYMBOL(<lfs_bapiret2>).
+    <lfs_bapiret2>-type   = <lfs_itab>-msgtyp.
+    <lfs_bapiret2>-id  = <lfs_itab>-msgid.
+    <lfs_bapiret2>-number  = <lfs_itab>-msgnr.
+    <lfs_bapiret2>-message_v1  = <lfs_itab>-msgv1.
+    <lfs_bapiret2>-message_v2  = <lfs_itab>-msgv2.
+    <lfs_bapiret2>-message_v3  = <lfs_itab>-msgv3.
+    <lfs_bapiret2>-message_v4  = <lfs_itab>-msgv4.
+    MESSAGE ID <lfs_bapiret2>-id TYPE <lfs_bapiret2>-type NUMBER <lfs_bapiret2>-number
+        INTO <lfs_bapiret2>-message
+        WITH <lfs_bapiret2>-message_v1 <lfs_bapiret2>-message_v2  <lfs_bapiret2>-message_v3  <lfs_bapiret2>-message_v4 .
+  ENDLOOP.
+
+  gcl_event_handler=>show_info_dialog(
+      it_bapiret2 = lt_bapiret2
+    ).
+
+ENDFORM.
+
+FORM f_get_posiciones USING    is_data   TYPE gsy_eket
+                      CHANGING et_poitem TYPE bapimepoitem_tp.
+
+  DATA: lt_conf_pedidos TYPE  bapiekes_tp,
+        lt_bapiret2     TYPE bapiret2_t.
+*    se obtiene el registro en el cuál se realiza click en el listado
+
+
+  CALL FUNCTION 'BAPI_PO_GETDETAIL1'
+    EXPORTING
+      purchaseorder = is_data-ebeln
+*     ACCOUNT_ASSIGNMENT       = ' '
+*     ITEM_TEXT     = ' '
+*     HEADER_TEXT   = ' '
+*     DELIVERY_ADDRESS         = ' '
+*     VERSION       = ' '
+*     SERVICES      = ' '
+*     SERIALNUMBERS = ' '
+*     INVOICEPLAN   = ' '
+*      IMPORTING
+*     POHEADER      =
+*     POEXPIMPHEADER =
+    TABLES
+      return        = lt_bapiret2
+      poitem        = et_poitem
+*     POADDRDELIVERY =
+*     poschedule    = lt_conf_pedidos
+*     POACCOUNT     =
+*     POCONDHEADER  =
+*     POCOND        =
+*     POLIMITS      =
+*     POCONTRACTLIMITS         =
+*     POSERVICES    =
+*     POSRVACCESSVALUES        =
+*     POTEXTHEADER  =
+*     POTEXTITEM    =
+*     POEXPIMPITEM  =
+*     POCOMPONENTS  =
+*     POSHIPPINGEXP =
+*     POHISTORY     =
+*     POHISTORY_TOTALS         =
+*     poconfirmation = lt_conf_pedidos
+*     ALLVERSIONS   =
+*     POPARTNER     =
+*     EXTENSIONOUT  =
+*     SERIALNUMBER  =
+*     INVPLANHEADER =
+*     INVPLANITEM   =
+*     POHISTORY_MA  =
+    .
+
+
+*  READ TABLE lt_conf_pedidos ASSIGNING FIELD-SYMBOL(<lfs_conf_pedido>) WITH KEY po_item = <lfs_data>-ebelp
+*                                                                                conf_ser = <lfs_data>-etens .
+*  IF sy-subrc EQ 0.
+*    es_pedido-ebtyp = <lfs_conf_pedido>-conf_type.
+*    es_pedido-lpein = <lfs_conf_pedido>-del_datcat.
+*    es_pedido-ref = <lfs_conf_pedido>-ext_doc_long.
+**      es_pedido-fecha_entrega  = <lfs_conf_pedido>-delivery_date+6(4) &&  <lfs_conf_pedido>-delivery_date+3(2) &&  <lfs_conf_pedido>-delivery_date+0(2).
+*    es_pedido-fecha_entrega  = <lfs_conf_pedido>-deliv_date.
+*    es_pedido-cantidad       = <lfs_conf_pedido>-quantity.
+*    es_pedido-etens          = <lfs_conf_pedido>-conf_ser.
+*  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_CHECK_LINEA_EN_LISTADO
+*&---------------------------------------------------------------------*
+*& Si la línea se retorna vacía, entonces no sirve para el listado
+*&---------------------------------------------------------------------*
+FORM f_check_linea_en_listado  USING    it_data   TYPE gty_eket
+                               CHANGING es_data   TYPE gsy_eket.
+  READ TABLE it_data TRANSPORTING NO FIELDS WITH KEY ebeln = es_data-ebeln
+                                                     ebelp = es_data-ebelp
+                                                     etens = es_data-etens.
+  IF sy-subrc EQ 0.
+    CLEAR es_data.
+  ENDIF.
+ENDFORM.
+
+
+FORM f_update_precio  USING     iv_alv_index TYPE lvc_index
+                              ic_status
+                              is_pedido    TYPE gsy_pedido
+                    CHANGING  et_data      TYPE gty_eket.
+
+  DATA: lt_conf_pedidos TYPE  bapiekes_tp,
+        lt_bapiret2     TYPE  bapiret2_t,
+        ls_bapiret2     LIKE LINE OF lt_bapiret2,
+        lt_po_item      TYPE STANDARD TABLE OF bapimepoitem,
+        lt_po_schedule  TYPE STANDARD TABLE OF bapimeposchedule,
+        lt_po_itemx     TYPE STANDARD TABLE OF bapimepoitemx,
+        ls_po_item      TYPE bapimepoitem.
+
+  READ TABLE et_data ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX iv_alv_index. "i_index.
+  CHECK sy-subrc EQ 0.
+
+***  Verificación del control de confirmación e inserción del mismo
+*  Se obtienen los pedidos y los repartos
+  CALL FUNCTION 'BAPI_PO_GETDETAIL1'
+    EXPORTING
+      purchaseorder = <lfs_data>-ebeln
+    TABLES
+      return        = lt_bapiret2
+      poitem        = lt_po_item
+      poschedule    = lt_po_schedule.
+*          poconfirmation = lt_po_confirmation.
+
+*   Si no hay errores
+  CHECK lt_bapiret2 IS INITIAL.
+
+* obtengo la posición a tratar
+  READ TABLE lt_po_item INTO ls_po_item WITH KEY po_item = <lfs_data>-ebelp.
+  CHECK sy-subrc EQ 0.
+  ls_po_item-net_price = is_pedido-precio .
+  <lfs_data>-netpr = is_pedido-precio .
+
+  CLEAR lt_po_item.
+  APPEND ls_po_item TO lt_po_item.
+  APPEND INITIAL LINE TO lt_po_itemx ASSIGNING FIELD-SYMBOL(<lfs_po_itemx>).
+  <lfs_po_itemx>-po_item = ls_po_item-po_item.
+  <lfs_po_itemx>-net_price = abap_true.
+
+*  LOOP AT lt_po_item ASSIGNING FIELD-SYMBOL(<lfs_po_item>).
+*
+**        si no es la posición que necesito tratar, la elimino
+*    IF <lfs_po_item>-po_item NE <lfs_data>-ebelp.
+*      DELETE lt_po_item INDEX sy-tabix..
+*      CONTINUE.
+*    ENDIF.
+*
+*    <lfs_po_item>-net_price = is_pedido-precio .
+*
+*    APPEND INITIAL LINE TO lt_po_itemx ASSIGNING FIELD-SYMBOL(<lfs_po_itemx>).
+*    <lfs_po_itemx>-po_item = <lfs_po_item>-po_item.
+**        <lfs_po_itemx>-acknowl_no = abap_true.
+*    <lfs_po_itemx>-net_price = abap_true.
+**        <lfs_po_itemx>-trackingno = abap_true.
+*  ENDLOOP.
+  CALL FUNCTION 'BAPI_PO_CHANGE'
+    EXPORTING
+      purchaseorder = <lfs_data>-ebeln
+    TABLES
+      return        = lt_bapiret2
+      poitem        = lt_po_item
+      poitemx       = lt_po_itemx.
+
+*    PERMITE REALIZAR COMMIT
+
+  CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+    EXPORTING
+      wait   = abap_true
+    IMPORTING
+      return = ls_bapiret2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_ACTUALIZAR_LINEAS
+*&---------------------------------------------------------------------*
+*& Se actualizan las líneas tratadas externamente del programa
+*&---------------------------------------------------------------------*
+FORM f_actualizar_lineas  USING    i_alv_index
+                          CHANGING et_data      TYPE gty_eket.
+  DATA lt_data_c TYPE gty_eket.
+  DATA lv_index_new TYPE syst-tabix.
+  READ TABLE et_data INTO DATA(ls_data) INDEX i_alv_index.
+  CHECK sy-subrc EQ 0.
+
+  CALL FUNCTION 'ZME_GET_LINEA_ORDEN_PEND'
+    EXPORTING
+      i_ebeln = ls_data-ebeln
+      i_ebelp = ls_data-ebelp
+**          SE PASA VACÍO PORQUE EL CH NUNCA LO OBTENDRÁ Y SE QUIERE ES EL VALOR AB O BA INTRODUCIDO
+      i_etens = '0000' "is_pedido-etens
+*     i_is_confirmacion = abap_true
+    IMPORTING
+      et_data = lt_data_c.
+
+  LOOP AT et_data ASSIGNING FIELD-SYMBOL(<lfs_data_del>).
+    IF <lfs_data_del>-ebeln EQ ls_data-ebeln
+     AND <lfs_data_del>-ebelp EQ ls_data-ebelp.
+      DELETE et_data INDEX sy-tabix.
+    ENDIF.
+  ENDLOOP.
+
+  lv_index_new = i_alv_index.
+  LOOP AT lt_data_c ASSIGNING FIELD-SYMBOL(<lfs_data_c>).
+    MOVE-CORRESPONDING <lfs_data_c> TO ls_data.
+    INSERT ls_data INTO et_data INDEX lv_index_new.
+    ADD 1 TO lv_index_new        .
+  ENDLOOP.
+
+
+*
+*  DATA lt_data TYPE gty_eket.
+*
+*  READ TABLE et_data ASSIGNING FIELD-SYMBOL(<lfs_e_data>) INDEX i_alv_index.
+*  CHECK sy-subrc EQ 0.
+*  CALL FUNCTION 'ZME_GET_LINEA_ORDEN_PEND'
+*    EXPORTING
+*      i_ebeln           = <lfs_e_data>-ebeln
+*      i_ebelp           = <lfs_e_data>-ebelp
+**     i_etens           =
+**      i_is_confirmacion = abap_true
+*    IMPORTING
+*      et_data           = lt_data.
+*
+*  LOOP AT lt_data ASSIGNING FIELD-SYMBOL(<lfs_data>).
+*    READ TABLE et_data ASSIGNING <lfs_e_data> WITH KEY ebeln = <lfs_data>-ebeln
+*                                                       ebelp = <lfs_data>-ebelp
+*                                                       etens = <lfs_data>-etens.
+*    CHECK sy-subrc EQ 0.
+*    <lfs_e_data> = <lfs_data>.
+*
+*  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_ENVIAR
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GC_RECLAMAR
+*&---------------------------------------------------------------------*
+FORM f_enviar  USING    i_accion
+                        pt_dest_email     TYPE zme_tt_ordenes_proveedores
+                        ps_emisor_email TYPE gsy_email_emisor.
+  DATA: lv_spool_id	     TYPE rspoid,
+        ls_nast          TYPE nast,
+        lt_body          TYPE rsfbtltab,
+        lt_body_to_send  TYPE swuoconttab,
+        lt_destinatarios TYPE safm_apt_pp_email,
+        lt_bapiret2	     TYPE bapiret2,
+        lt_atachments    TYPE  zme_tt_file_info_to_send.
+
+  READ TABLE pt_dest_email ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX 1.
+  CHECK sy-subrc EQ 0.
+
+  CASE i_accion.
+    WHEN gc_reclamar.
+      CALL METHOD zcl_utilities=>get_email_body
+        EXPORTING
+          i_template_id = CONV #( gc_template_email_reclama )
+        RECEIVING
+          rt_lines      = lt_body.
+
+    WHEN gc_confirm.
+      CALL METHOD zcl_utilities=>get_email_body
+        EXPORTING
+          i_template_id = CONV #( gc_template_email_conf )
+        RECEIVING
+          rt_lines      = lt_body.
+  ENDCASE.
+  PERFORM f_complete_body_email   USING    pt_dest_email
+                                           lt_body
+                                  CHANGING lt_body_to_send.
+  APPEND INITIAL LINE TO lt_destinatarios	ASSIGNING FIELD-SYMBOL(<lfs_destinatario>).
+  <lfs_destinatario> = <lfs_data>-smtp_addr.
+* se agrega el logo principal de la cabecera
+  CALL METHOD zcl_utilities=>add_email_atachment_jpg
+    EXPORTING
+      i_text_id     = conv #( gc_email_img_logo )
+    CHANGING
+      et_atachments = lt_atachments.
+*  Enviar Email a destinatarios
+  CALL METHOD zcl_utilities=>send_email
+    EXPORTING
+      it_body          = lt_body_to_send
+      i_subject        = 'Facturación'
+      i_sender         = ps_emisor_email-rmail
+      it_atachments    = lt_atachments
+      it_destinatarios = lt_destinatarios
+    IMPORTING
+      et_bapiret2      = lt_bapiret2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_CALL_FORM_0300
+*&---------------------------------------------------------------------*
+*& Dialog con la información de las órdenes de compra a los proveedores
+*&---------------------------------------------------------------------*
+FORM f_call_form_0300 .
+  DATA lv_proveedor TYPE  lifnr.
+  DATA lt_dest_to_send LIKE gt_dest_email.
+
+  CALL SCREEN 0300 STARTING AT 4  4.
+  CHECK sy-subrc EQ 0.
+
+  LOOP AT gt_dest_email ASSIGNING FIELD-SYMBOL(<lfs_dest_email>).
+    IF lv_proveedor NE <lfs_dest_email>-lifnr
+      AND lv_proveedor IS NOT INITIAL.
+      READ TABLE gt_emisores_email ASSIGNING FIELD-SYMBOL(<lfs_emisor_email>) WITH KEY partner = <lfs_dest_email>-lifnr.
+      CHECK sy-subrc EQ 0.
+*        una vez otenidos todos los pedidos a enviar para el proveedor, se envían y luego se continúa la iteración con el siguiente proveedor.
+      PERFORM f_enviar USING gc_accion_envio
+                                lt_dest_to_send
+                                <lfs_emisor_email>.
+*                                gt_emisores_email.
+      CLEAR lt_dest_to_send.
+    ENDIF.
+    APPEND <lfs_dest_email> TO lt_dest_to_send.
+
+    lv_proveedor = <lfs_dest_email>-lifnr.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form GET_PEDIDOS_SELECTED_TO_SEND
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- LT_DATA
+*&---------------------------------------------------------------------*
+FORM get_pedidos_selected_to_send . "CHANGING et_data  TYPE zme_tt_ordenes_proveedores.
+  DATA lt_ordenes  TYPE /SRMSMC/T_LIFNR.
+  CLEAR: gt_dest_email .
+  LOOP AT gt_data ASSIGNING FIELD-SYMBOL(<lfs_data>) WHERE check_box EQ abap_true.
+    APPEND INITIAL LINE TO lt_ordenes ASSIGNING FIELD-SYMBOL(<lfs_orden>).
+    MOVE-CORRESPONDING <lfs_data> TO <lfs_orden>.
+  ENDLOOP.
+*** DESCDOMENTAR Y ADAPTAR*******
+*  CALL METHOD zcl_utilities=>get_email_prov_by_ord_compra
+*    EXPORTING
+*      it_ordenes = lt_ordenes
+*    RECEIVING
+*      rt_data    = gt_dest_email.
+******
+
+*  SE ORDENA TOMANDO COMO CLAVE PRINCIPAL EL PROVEEDOR, LUEGO EL PEDIDO Y SU POSICIÓN
+  SORT gt_dest_email BY lifnr ebeln ebelp.
+
+  CALL METHOD zcl_utilities=>get_emisores_email
+    EXPORTING
+      it_proveedores = lt_ordenes
+    RECEIVING
+      rt_data        = gt_emisores_email.
+ENDFORM.
+
+
+FORM get_output_params
+ CHANGING
+      cs_outputparams  TYPE sfpoutputparams
+      cs_docparams     TYPE sfpdocparams
+      cv_device        TYPE output_device.
+*
+*  DATA: lv_comm_type   TYPE ad_comm,
+*        ls_comm_values TYPE szadr_comm_values.
+*
+*  CASE gs_nast-nacha.
+*    WHEN gc_nacha-external_send.
+*
+*      IF NOT gs_nast-tcode IS INITIAL.
+*        CALL FUNCTION 'ADDR_GET_NEXT_COMM_TYPE'
+*          EXPORTING
+*            strategy           = 'WEBM'
+*            address_type       = <gs_vbdkr>-address_type
+*            address_number     = <gs_vbdkr>-adrnr
+*            person_number      = <gs_vbdkr>-adrnp
+*          IMPORTING
+*            comm_type          = lv_comm_type
+*            comm_values        = ls_comm_values
+*          EXCEPTIONS
+*            address_not_exist  = 1
+*            person_not_exist   = 2
+*            no_comm_type_found = 3
+*            internal_error     = 4
+*            parameter_error    = 5
+*            OTHERS             = 6.
+*
+*        IF sy-subrc <> 0.
+*          <gv_returncode> = sy-subrc.
+*          PERFORM protocol_update.
+*          RETURN.
+*        ENDIF.
+*
+*        CASE lv_comm_type.
+*          WHEN 'INT'.  "e-mail
+*            cs_outputparams-getpdf = gc_true.
+*            cv_device              = gc_device-email.
+*            gs_nast-email_addr     = ls_comm_values-adsmtp-smtp_addr.
+*          WHEN 'FAX'.
+*            cs_outputparams-getpdf = gc_true.
+*            cv_device              = gc_device-fax.
+*            gs_nast-telfx          = ls_comm_values-adfax-fax_number.
+*            gs_nast-tland          = ls_comm_values-adfax-country.
+*          WHEN 'LET'.   "Printer
+*            cv_device              = gc_device-printer.
+*        ENDCASE.
+*      ELSE.
+*        cv_device              = gc_device-printer.
+*      ENDIF.
+*
+*    WHEN gc_nacha-printer.
+*      cv_device              = gc_device-printer.
+*    WHEN gc_nacha-fax.
+*      cs_outputparams-getpdf = gc_true.
+*      cv_device              = gc_device-fax.
+*  ENDCASE.
+*
+** The original document should be printed only once
+*  IF NOT gv_screen_display IS INITIAL
+*  AND gs_interface-head_detail-repeat EQ gc_false.
+*    cs_outputparams-noprint   = gc_true.
+*    cs_outputparams-nopributt = gc_true.
+*    cs_outputparams-noarchive = gc_true.
+*  ENDIF.
+*  IF gv_screen_display     = 'X'.
+*    cs_outputparams-getpdf  = gc_false.
+*    cs_outputparams-preview = gc_true.
+*  ELSEIF gv_screen_display = 'W'. "Web dynpro
+*    cs_outputparams-getpdf  = gc_true.
+*    cv_device               = gc_device-web_dynpro.
+*  ENDIF.
+*  cs_outputparams-nodialog  = gc_true.
+*  cs_outputparams-dest      = gs_nast-ldest.
+*  cs_outputparams-copies    = gs_nast-anzal.
+*  cs_outputparams-dataset   = gs_nast-dsnam.
+*  cs_outputparams-suffix1   = gs_nast-dsuf1.
+*  cs_outputparams-suffix2   = gs_nast-dsuf2.
+*  cs_outputparams-cover     = gs_nast-tdocover.
+*  cs_outputparams-covtitle  = gs_nast-tdcovtitle.
+*  cs_outputparams-authority = gs_nast-tdautority.
+*  cs_outputparams-receiver  = gs_nast-tdreceiver.
+*  cs_outputparams-division  = gs_nast-tddivision.
+*  cs_outputparams-arcmode   = gs_nast-tdarmod.
+*  cs_outputparams-reqimm    = gs_nast-dimme.
+*  cs_outputparams-reqdel    = gs_nast-delet.
+*  cs_outputparams-senddate  = gs_nast-vsdat.
+*  cs_outputparams-sendtime  = gs_nast-vsura.
+*
+**--- Set language and default language
+*  cs_docparams-langu     = gv_language.
+*  cs_docparams-replangu1 = <gs_vbdkr>-spras_vko.
+*  cs_docparams-replangu2 = gc_english.
+*  cs_docparams-country   = <gs_vbdkr>-land1.
+*
+** Archiving
+*  APPEND toa_dara TO cs_docparams-daratab.
+
+ENDFORM.                    " get_output_params
+*&---------------------------------------------------------------------*
+*& Form F_COMPLETE_BODY_EMAIL
+*&---------------------------------------------------------------------*
+*& Se crea dinámicamente el cuerpo del correo con las respectivas variables
+*&---------------------------------------------------------------------*
+FORM f_complete_body_email    USING    pt_dest_email    TYPE zme_tt_ordenes_proveedores
+                                       it_body          TYPE rsfbtltab
+                              CHANGING et_body_to_send  TYPE swuoconttab.
+  .
+  DATA: lv_row          TYPE string,
+        ls_body_to_send LIKE LINE OF et_body_to_send.
+
+  LOOP AT pt_dest_email ASSIGNING FIELD-SYMBOL(<lfs_dest_email>).
+    CONCATENATE
+    '<TR><TD>'
+    <lfs_dest_email>-ebeln '/' <lfs_dest_email>-ebelp
+    '</TD><TD>'
+    <lfs_dest_email>-ref
+    '</TD></TR>'
+    INTO lv_row.
+  ENDLOOP.
+  LOOP AT it_body ASSIGNING FIELD-SYMBOL(<lfs_body>).
+    CLEAR ls_body_to_send.
+    MOVE <lfs_body> TO ls_body_to_send.
+*  SE REEMPLAZA CON EL VALOR OBTENIDO EN TABLA
+    REPLACE ALL OCCURRENCES OF '<TR_PEDIDO_REFERENCIA>'  IN ls_body_to_send WITH lv_row.
+    APPEND ls_body_to_send TO et_body_to_send.
+
+
+  ENDLOOP.
+
+ENDFORM.

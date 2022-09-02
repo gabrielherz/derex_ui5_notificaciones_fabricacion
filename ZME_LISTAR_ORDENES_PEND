@@ -1,0 +1,45 @@
+*&---------------------------------------------------------------------*
+*& Report ZME_LISTAR_ORDENES_PEND
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zme_listar_ordenes_pend.
+TABLES: ekko,
+        ekpo,
+        ekes,
+        eket.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+*  paramétros de ´múltiples valores
+SELECT-OPTIONS: r_prov  FOR ekko-lifnr,
+                r_matnr FOR ekpo-matnr,
+                r_fec_en for eket-eindt,
+                r_bedat FOR ekko-bedat,
+                r_eindt FOR ekes-eindt,
+                r_ebeln FOR ekko-ebeln,
+                r_ebtyp FOR ekes-ebtyp.
+SELECTION-SCREEN END OF BLOCK b1 .
+
+INCLUDE zincbatc.
+INCLUDE zdefiniciones.
+*INCLUDE z_utilities_frm.
+
+declare_alv.
+INCLUDE zme_listar_ordenes_pend_top.
+INCLUDE zme_listar_ordenes_pend_cls.
+INCLUDE zme_listar_ordenes_pend_mod.
+INCLUDE zme_listar_ordenes_pend_frm.
+
+
+START-OF-SELECTION.
+  CREATE OBJECT go_event_handler.
+
+  PERFORM f_main.
+
+* Se inicia el Dynpro de la tabla ALV a mostrar
+  CALL SCREEN 0100.
+  
+  
+  
+  
+  

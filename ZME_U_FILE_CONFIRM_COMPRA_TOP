@@ -1,0 +1,30 @@
+*&---------------------------------------------------------------------*
+*& Include          ZME_U_FILE_CONFIRM_COMPRA_TOP
+*&---------------------------------------------------------------------*
+
+TYPES:
+  gsy_data TYPE zme_s_u_file_confirm_compra,
+  gty_data TYPE TABLE OF gsy_data,
+* Para verificar si hay datos repetidos en el fichero
+  BEGIN OF gsy_collect,
+    ebeln TYPE ebeln,
+    ebelp TYPE ebelp,
+    cont  TYPE syst_tabix,
+  END OF gsy_collect,
+  gty_collect TYPE HASHED TABLE OF gsy_collect WITH UNIQUE KEY ebeln ebelp,
+  BEGIN OF gsy_collect_ped,
+    ebeln TYPE ebeln,
+    cont  TYPE syst_tabix,
+  END OF gsy_collect_ped,
+  gty_collect_ped TYPE HASHED TABLE OF gsy_collect_ped WITH UNIQUE KEY ebeln.
+.
+
+* tabla interna con los atributos de los campos de la pantalla
+DATA: gt_screen TYPE TABLE OF screen.
+
+CONSTANTS: gc_tipo_confirmacion TYPE bstae VALUE 'Z001',
+           gc_i                 TYPE c     VALUE 'I',
+           gc_ab(2)             TYPE c     VALUE 'AB',
+           gc_separator         TYPE c     VALUE ';', "'~',
+           gc_ind_borrado       TYPE ekpo-loekz VALUE 'L',
+           gc_anno_actual(4)    TYPE c      VALUE '2022'.

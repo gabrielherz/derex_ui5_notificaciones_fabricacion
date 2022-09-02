@@ -1,0 +1,34 @@
+PROCESS BEFORE OUTPUT.
+  CHAIN.
+*  verificación de los datos introducidos en el formulario
+    FIELD:
+            lb_lpein,
+            lb_ebtyp, "ekes-ebtyp,
+            ekes-xblnr,
+            ekes-eindt,
+            ekes-menge,
+            EKPO-NETPR.
+    MODULE clear_fields . "ON CHAIN-REQUEST.
+
+  ENDCHAIN.
+
+
+  MODULE status_0200.
+*
+PROCESS AFTER INPUT.
+
+  CHAIN.
+*  verificación de los datos introducidos en el formulario
+    FIELD:
+            lb_lpein,
+            lb_ebtyp, "ekes-ebtyp,
+            ekes-xblnr,
+            ekes-eindt,
+            ekes-menge,
+            EKPO-NETPR.
+    MODULE check_formulario ON CHAIN-REQUEST.
+
+  ENDCHAIN.
+* en caso que el usuario salga forsozamente
+  MODULE exit AT EXIT-COMMAND.
+  MODULE user_command_0200.

@@ -1,0 +1,384 @@
+*&---------------------------------------------------------------------*
+*& Include          ZME_U_FILE_CONFIRM_COMPRA_FRM
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form F_MAIN
+*&---------------------------------------------------------------------*
+*& Cuerpo principal
+*&---------------------------------------------------------------------*
+FORM f_main.
+  DATA: lt_file         TYPE TABLE OF string,
+        lt_data         TYPE          gty_data,
+        lt_data_to_save TYPE          tfmgr_red_po_item,
+        lo_log          TYPE REF TO   zcl_log,
+        lv_error        TYPE          boolean.
+
+* se instancia el log de error
+  CREATE OBJECT lo_log
+    EXPORTING
+      iv_object    = 'ZME'
+      iv_subobject = 'ZME_U_CONF_COMPR'.
+* se crea el objeto y el subobjeto en caso que no existan
+  lv_error = lo_log->create( ).
+* si hay un error se cierra la aplicación
+  IF lv_error IS NOT INITIAL.
+    MESSAGE e008(z_utilities_msg).
+  ENDIF.
+**  si ae ha seleccionado que se cargue a partir de plantillas
+*  IF p_front EQ abap_true.
+*   se obtiene el fichero desde los parámetros de entrada
+    PERFORM f_get_file USING p_data CHANGING lt_file.
+*  ENDIF.
+**  Si se ha seleccionado que se cargue a partir del Servidor
+*  IF p_fondo EQ abap_true.
+**   se obtiene el fichero desde los parámetros de entrada
+*    PERFORM f_get_file_form_al11 USING p_ruta CHANGING lt_file lv_error lo_log.
+*  ENDIF.
+
+* se obtienen los datos del fichero y se guardan en la tabla interna lt_data
+  PERFORM f_get_data      USING lt_file     CHANGING lt_data lv_error lo_log.
+
+  IF lv_error IS INITIAL
+*    Para las inserciones no existe verificación de duplicidad de datos
+    AND p_insert IS INITIAL.
+
+* se verifica si está repetida la orden de compra
+    PERFORM f_verify_data      USING     lt_data
+                               CHANGING  "lt_data_to_save
+                                         lv_error
+                                         lo_log.
+  ENDIF.
+  IF lv_error EQ abap_false.
+    PERFORM f_procesar        USING    lt_data
+*                                       p_comm
+                                       p_insert
+                                       p_delete
+*                                       p_update
+                              CHANGING lv_error
+                                       lo_log.
+  ENDIF.
+
+**   se guardan los mensajes, ver en transacción SLG1
+** se hace antes que la visualización de los mensajes para evitar problemas cuando se ejecuta en front,
+* en caso que quede en blanco la pantalla del front y no se pueda pulsar el botón ok ya que los mensajes son síncronos respecto al resto de líneas de ejecución
+  lo_log->save( ).
+
+*  se muestran los diferentes mensajes al finalizar la ejecución del programa
+  IF lt_file IS INITIAL.
+*  si el fichero que viene se encuentra vacío
+    MESSAGE e003(z_utilities_msg).
+    EXIT.
+  ENDIF.
+  IF lv_error IS INITIAL.
+* si se ha guardado satisfactoriamente
+    MESSAGE i004(z_utilities_msg) WITH 'ZME'.
+  ELSE.
+*  si ha habido algún error al intentar actualizar
+    MESSAGE i005(z_utilities_msg) WITH 'ZME'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_GET_DATA
+*&---------------------------------------------------------------------*
+FORM f_get_data  USING    it_file TYPE string_table
+                 CHANGING et_data TYPE gty_data
+                          e_error
+                          eo_log  TYPE REF TO zcl_log..
+  DATA: lv_value        TYPE string,
+        lv_pedido       TYPE string,
+        lv_posicion     TYPE string,
+        lv_fecha_c      TYPE string,
+        lv_fecha_est    TYPE string,
+        lv_fecha_conf   TYPE string,
+        lv_cantidad     TYPE string,
+        lv_index        TYPE syst-tabix.
+
+* Valores ebtyp permitidos en el sistema
+  SELECT ebtyp FROM t163e INTO TABLE @DATA(lt_ebtyp).
+
+
+*Se convierten los datos del fichero en tabla interna
+  LOOP AT it_file ASSIGNING FIELD-SYMBOL(<lfs_file>).
+    lv_index = syst-tabix.
+    APPEND INITIAL LINE TO et_data ASSIGNING FIELD-SYMBOL(<lfs_data>).
+
+    SPLIT <lfs_file> AT gc_separator INTO   lv_pedido "<lfs_data>-pedido
+                                            lv_posicion "<lfs_data>-posicion     "texto
+                                            lv_fecha_conf
+                                            <lfs_data>-ref "<lfs_data>-fecha_conf "LA FECHA DE CONFIRMACIÓN ES LA REFERENCIA
+                                            <lfs_data>-tipo_conf
+                                            lv_cantidad
+                                            lv_fecha_c "FECHAR_CREACION
+                                            lv_fecha_est
+*                                            lv_fecha "<lfs_data>-fecha_conf "
+*                                            <lfs_data>-tipo_conf
+*                                            lv_value  "<lfs_data>-cantidad
+*                                            <lfs_data>-ref
+                                            DATA(lv_vacio).
+
+***  Verificación de los formatos ***
+    PERFORM f_validar_num   USING     lv_pedido
+                                      lv_index
+                                      ' '
+                                      ' '
+                                      '016'
+                                      'ZME_MSG'
+                            CHANGING
+                                      <lfs_data>-pedido
+                                      e_error
+                                      eo_log.
+
+    PERFORM f_validar_num   USING     lv_posicion
+                                      lv_index
+                                      ' '
+                                      ' '
+                                      '017'
+                                      'ZME_MSG'
+                            CHANGING
+                                      <lfs_data>-posicion
+                                      e_error
+                                      eo_log.
+*    CONVIERTE HASTA 999.999.999.999 EN 999999999999
+    REPLACE '.' IN lv_cantidad WITH ''.
+    REPLACE '.' IN lv_cantidad WITH ''.
+    REPLACE '.' IN lv_cantidad WITH ''.
+    REPLACE '.' IN lv_cantidad WITH ''.
+*    Se verifica si es un número
+    PERFORM f_validar_num   USING     lv_cantidad
+                                      lv_index
+                                      ' '
+                                      ' '
+                                      '017'
+                                      'ZME_MSG'
+                            CHANGING
+                                      <lfs_data>-cantidad
+                                      e_error
+                                      eo_log.
+    IF lv_fecha_conf NE ''.
+      PERFORM f_convert_date USING    lv_fecha_conf
+                                          lv_index
+                                          ''
+                                          ''
+                                          '015'
+                                          'ZME_MSG'
+                                CHANGING  <lfs_data>-fecha_conf
+                                          e_error
+                                          eo_log.
+    ENDIF.
+*
+*    IF <lfs_data>-ref NE ''.
+**    como hay fechas que vienen con formato dd.mm y no dd.mm.yy se convierte con el año actual
+*      SPLIT <lfs_data>-ref AT '.' INTO TABLE DATA(lt_splited_date).
+*      READ TABLE lt_splited_date TRANSPORTING NO FIELDS INDEX 3.
+*      IF sy-subrc NE 0.
+*        CONCATENATE <lfs_data>-ref '.' gc_anno_actual INTO <lfs_data>-ref.
+*      ENDIF.
+*
+**    se convierte al formato de fecha aceptado por SAP
+*      PERFORM f_convert_date USING    <lfs_data>-ref
+*                                      lv_index
+*                                      ''
+*                                      ''
+*                                      '015'
+*                                      'ZME_MSG'
+*                            CHANGING  <lfs_data>-fecha_conf
+*                                      e_error
+*                                      eo_log.
+*    ENDIF.
+
+    READ TABLE lt_ebtyp TRANSPORTING NO FIELDS WITH KEY ebtyp = <lfs_data>-tipo_conf.
+    IF sy-subrc NE 0.
+      PERFORM f_add_msj     USING     <lfs_data>-tipo_conf
+                                      lv_index
+                                      ''
+                                      ''
+                                      '019'
+                                      'E'
+                                      'ZME_MSG'
+                            CHANGING  eo_log   .
+      e_error = abap_true.
+    ENDIF.
+
+    IF lv_fecha_c NE ''.
+      PERFORM f_convert_date USING    lv_fecha_c
+                                      lv_index
+                                      ''
+                                      ''
+                                      '015'
+                                      'ZME_MSG'
+                            CHANGING  <lfs_data>-fechar_creacion
+                                      e_error
+                                      eo_log.
+    ENDIF.
+    IF lv_fecha_est NE ''.
+      PERFORM f_convert_date USING    lv_fecha_est
+                                      lv_index
+                                      ''
+                                      ''
+                                      '015'
+                                      'ZME_MSG'
+                            CHANGING  <lfs_data>-fecha_estadistica
+                                      e_error
+                                      eo_log.
+    ENDIF.
+
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_VERIFY_DATA
+*&---------------------------------------------------------------------*
+*& VERIFICA SI EL FORMATO DE LOS DATOS SUMINISTRADOS EN EL FICHEROS ES CORRECTO
+*&---------------------------------------------------------------------*
+FORM f_verify_data  USING    it_data TYPE gty_data
+                    CHANGING "et_data_to_save TYPE tfmgr_red_po_item
+                             e_error
+                             eo_log  TYPE REF TO zcl_log.
+  DATA lv_cont TYPE string.
+  DATA: lt_data_collect TYPE gty_collect.
+  DATA: lv_index TYPE sy-tabix.
+*  como se copia directament ele fichero de la tabla de EKES, da igual si hay repetidos
+  CHECK  p_delete IS INITIAL.
+  LOOP AT it_data ASSIGNING FIELD-SYMBOL(<lfs_data>).
+    ADD 1 TO lv_index.
+    COLLECT VALUE gsy_collect(
+                             ebeln = <lfs_data>-pedido
+                             ebelp = <lfs_data>-posicion
+                             cont = 1
+                             ) INTO lt_data_collect.
+    IF <lfs_data>-pedido EQ ''.
+      PERFORM f_add_msj USING   lv_index
+                                ''
+                                ''
+                                ''
+                                '010'
+                                'E'
+                                'ZME_MSG'
+                      CHANGING  eo_log   .
+      e_error = abap_true.
+    ENDIF.
+
+    IF <lfs_data>-posicion EQ ''.
+      PERFORM f_add_msj USING   lv_index
+                                ''
+                                ''
+                                ''
+                                '011'
+                                'E'
+                                'ZME_MSG'
+                      CHANGING  eo_log   .
+      e_error = abap_true.
+    ENDIF.
+*    APPEND INITIAL LINE TO et_data_to_save ASSIGNING FIELD-SYMBOL(<lfs_data_to_save>).
+*    MOVE-CORRESPONDING <lfs_data> TO <lfs_data_to_save>.
+  ENDLOOP.
+  LOOP AT lt_data_collect ASSIGNING FIELD-SYMBOL(<lfs_data_collect>) WHERE cont > 1.
+
+    lv_cont = <lfs_data_collect>-cont.
+    CONDENSE lv_cont NO-GAPS .
+    PERFORM f_add_msj USING     <lfs_data_collect>-ebeln
+                                <lfs_data_collect>-ebelp
+                                lv_cont
+                                ''
+                                '009'
+                                'E'
+                                'ZME_MSG'
+                      CHANGING  eo_log   .
+    e_error = abap_true.
+  ENDLOOP.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form F_PROCESAR
+*&---------------------------------------------------------------------*
+*& Procesa los datos para guardar en el back
+*&---------------------------------------------------------------------*
+FORM f_procesar  USING    it_data_to_save TYPE gty_data
+*                          i_commit
+                          i_insert
+                          i_delete
+*                          i_update
+                 CHANGING e_error
+                          eo_log  TYPE REF TO zcl_log.
+
+  IF i_delete IS NOT INITIAL.
+    CALL FUNCTION 'ZME_D_CONFIRM_ORDENES_COMPRA'
+      EXPORTING
+*        iv_commit_confirmaciones = i_commit
+        iv_tipo_confirmacion     = gc_tipo_confirmacion
+        it_ordenes               = it_data_to_save
+      IMPORTING
+        ev_return                = e_error
+      CHANGING
+        eo_log                   = eo_log.
+
+  ENDIF.
+
+  IF i_insert IS NOT INITIAL.
+    CALL FUNCTION 'ZME_I_CONFIRM_ORDENES_COMPRA'
+      EXPORTING
+*        iv_commit_confirmaciones = i_commit
+        iv_tipo_confirmacion     = gc_tipo_confirmacion
+        it_ordenes               = it_data_to_save
+      IMPORTING
+        ev_return                = e_error
+      CHANGING
+        eo_log                   = eo_log.
+
+  ENDIF.
+
+
+
+*    CALL FUNCTION 'ZME_U_CONFIRM_ORDENES_COMPRA'
+*      EXPORTING
+*        iv_commit_confirmaciones = i_commit
+*        iv_tipo_confirmacion     = gc_tipo_confirmacion
+*        it_ordenes               = it_data_to_save
+*      IMPORTING
+*        ev_return                = e_error
+*      CHANGING
+*        eo_log                   = eo_log.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form F_VERIFY_TIME
+* se verifica que la hora suministrada sea correcta
+*&---------------------------------------------------------------------*
+FORM f_verify_time  USING    pv_value
+                             pv_param2
+                             pv_param3
+                             pv_param4
+                             pv_cod_msg
+                             pv_clase_msg
+                    CHANGING pv_assigned_value
+                             pv_error
+                             po_log             TYPE REF TO   zcl_log.
+
+  CALL FUNCTION 'CONVERT_TIME_INPUT'
+    EXPORTING
+      input                     = pv_value
+      plausibility_check        = 'X'
+    IMPORTING
+      output                    = pv_assigned_value
+    EXCEPTIONS
+      plausibility_check_failed = 1
+      wrong_format_in_input     = 2
+      OTHERS                    = 3.
+  IF sy-subrc <> 0.
+    PERFORM f_add_msj         USING     pv_value
+                                        pv_param2
+                                        pv_param3
+                                        pv_param4
+                                        pv_cod_msg
+                                        'E'
+                                        pv_clase_msg
+                              CHANGING  po_log   .
+    pv_error = abap_true.
+  ELSE.
+    pv_assigned_value = pv_value.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*

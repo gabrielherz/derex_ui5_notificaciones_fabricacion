@@ -1,0 +1,601 @@
+*&---------------------------------------------------------------------*
+*& Include          ZINCBATC
+*&---------------------------------------------------------------------*
+***INCLUDE ZINCBATC .
+***********************************************************************
+*                  INCLUDE Standard para Batch-inputs                  *
+***********************************************************************
+
+*----------------------------------------------------------------------*
+*   CONSTANTES                                                         *
+*----------------------------------------------------------------------*
+* Tablas ----
+tables: t100.
+
+* Valores BOOLEANs
+data: cierto value 'X',
+      falso  value ' '.
+
+* Tabla de BATCH-INPUTs
+data begin of bdc_tab occurs 100.
+        include structure bdcdata.
+data end of bdc_tab.
+data begin of itab occurs 10.
+        include structure bdcmsgcoll.
+data end of itab.
+
+
+
+* BOOLEAN que indica si un batch input es online o no.
+data: online value 'X',
+      debug  value ' ',
+      modo   value 'N'.                " Cuando un batch se ejecuta con
+                                       " DEBUG == CIERTO, se hace un
+                                       " CALL TRANSACTION en modo 'A'.
+
+*---------------------------------------------------------------------*
+*       FORM FECHA_FIN_MES                                            *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  <-->  FECHA                                                         *
+*---------------------------------------------------------------------*
+form fecha_fin_mes using fecha.
+
+  data fec type d.
+
+  fec = fecha.
+  fec+6(2) = '01'.                     " Dia 1 del mes actual.
+  fec = fec + 32.                      " Cualquier dia del mes siguiente
+  fec+6(2) = '01'.                     " Dia 1 del mes siguiente
+  fec = fec - 1.                       " Ultimo dia del mes actual
+  fecha = fec.
+
+endform.                               " FECHA_FIN_MES
+
+*---------------------------------------------------------------------*
+*       FORM FECHA_SUMA_MES                                           *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  FECHA                                                         *
+*  -->  VALUE(MESES)                                                  *
+*---------------------------------------------------------------------*
+form fecha_suma_mes using fecha value(meses).
+
+  data: fecha1 type d,
+        fecha2 type d.
+
+  fecha2 = fecha1 = fecha.
+  fecha2+6(2) = '01'.                  " Día 1 del mes origen
+  while meses >= 12.                   " Cuando se sumen más de un año
+    add 1 to fecha2+0(4).              " Añado uno al año (12 meses)
+    subtract 12 from meses.
+  endwhile.
+  fecha2+4(2) = fecha2+4(2) + meses.   " Sumo los meses
+  if fecha2+4(2) > 12.
+    subtract 12 from fecha2+4(2).
+    add 1 to fecha2+0(4).
+  endif.
+  perform fecha_fin_mes using fecha2.
+  if fecha1+6(2) < fecha2+6(2).        " Si el día origen es menor
+    fecha2+6(2) = fecha1+6(2).         " que el último día del mes
+  endif.                               " destino, lo ponemos.
+  fecha = fecha2.
+endform.                               " FECHA_SUMA_MES
+
+*---------------------------------------------------------------------*
+*       FORM DYNPRO                                                   *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  VALUE(DYNBEGIN)                                               *
+*  -->  VALUE(NAME)                                                   *
+*  -->  VALUE(VALUE)                                                  *
+*---------------------------------------------------------------------*
+form dynpro using value(dynbegin) value(name) value(value).
+
+  clear bdc_tab.
+  if dynbegin = 'X'.
+    bdc_tab-program  = name.
+    bdc_tab-dynpro   = value.
+    bdc_tab-dynbegin = 'X'.
+  else .
+    bdc_tab-fnam = name.
+    bdc_tab-fval = value.
+  endif.
+  append bdc_tab.
+  clear bdc_tab.
+
+endform.                               " DYNPRO
+*----------------------------------------------------------------------*
+*        Start new screen                                              *
+*----------------------------------------------------------------------*
+form bdc_dynpro using program dynpro.
+  clear bdc_tab.
+  bdc_tab-program  = program.
+  bdc_tab-dynpro   = dynpro.
+  bdc_tab-dynbegin = 'X'.
+  append bdc_tab.
+endform.
+
+*----------------------------------------------------------------------*
+*        Insert field                                                  *
+*----------------------------------------------------------------------*
+form bdc_field using fnam fval.
+  clear bdc_tab.
+  bdc_tab-fnam = fnam.
+  bdc_tab-fval = fval.
+  append bdc_tab.
+endform.
+
+*si-------------------------------------------------------------------*
+*       FORM BDC_OPEN                                                 *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  GROUP                                                         *
+*---------------------------------------------------------------------*
+form bdc_open using group.
+  online = cierto.
+  if not group is initial and debug = falso.
+    call function 'BDC_OPEN_GROUP'
+         exporting
+              client              = sy-mandt
+              group               = group
+              user                = sy-uname
+              keep                = 'X'
+         exceptions
+              client_invalid      = 1
+              destination_invalid = 2
+              group_invalid       = 3
+              holddate_invalid    = 4
+              internal_error      = 5
+              queue_error         = 6
+              running             = 7
+              user_invalid        = 8.
+    if sy-subrc = 0. " Si se ha podido abrir, OFFLINE; si no, ONLINE
+      online = falso.
+    endif.
+  endif.
+endform.                               " BDC_OPEN
+
+*---------------------------------------------------------------------*
+*       FORM BDC_INSERT                                               *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  TCODE                                                         *
+*---------------------------------------------------------------------*
+form bdc_insert using tcode.
+  if online is initial and debug = falso.
+    call function 'BDC_INSERT'
+         exporting
+              tcode          = tcode
+         tables
+              dynprotab      = bdc_tab
+         exceptions
+              internal_error = 1
+              not_open       = 2
+              queue_error    = 3
+              tcode_invalid  = 4.
+  elseif debug = cierto.
+    call transaction tcode using bdc_tab mode 'A'.
+  else.
+    call transaction tcode using bdc_tab mode 'N'.
+  endif.
+* RESETEO TABLA INTERNA EN FUNCION BDC_CLOSE.
+*  REFRESH BDC_TAB.
+endform.                               " BDC_INSERT
+
+*---------------------------------------------------------------------*
+*       FORM BDC_INSERT_ECO                                           *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  ECO                                                           *
+*  -->  TCODE                                                         *
+*---------------------------------------------------------------------*
+form bdc_insert_eco tables eco structure bdcmsgcoll using tcode.
+  clear eco.
+  refresh eco.
+  if online is initial and debug = falso.
+    call function 'BDC_INSERT'
+         exporting
+              tcode          = tcode
+         tables
+              dynprotab      = bdc_tab
+         exceptions
+              internal_error = 1
+              not_open       = 2
+              queue_error    = 3
+              tcode_invalid  = 4.
+  elseif debug = cierto.
+    call transaction tcode using bdc_tab mode 'A' messages into eco.
+  else.
+    call transaction tcode using bdc_tab mode 'N' messages into eco.
+  endif.
+* RESETEO TABLA INTERNA EN FUNCION BDC_CLOSE.
+*  REFRESH BDC_TAB.
+endform.                               " BDC_INSERT
+*---------------------------------------------------------------------*
+*       FORM BDC_INSERT_S                                             *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  TCODE                                                         *
+*---------------------------------------------------------------------*
+form bdc_insert_s using tcode.
+  if online is initial and debug = falso.
+    call function 'BDC_INSERT'
+         exporting
+              tcode          = tcode
+         tables
+              dynprotab      = bdc_tab
+         exceptions
+              internal_error = 1
+              not_open       = 2
+              queue_error    = 3
+              tcode_invalid  = 4.
+  elseif debug = cierto.
+    call transaction tcode using bdc_tab mode 'A' update 'S'.
+  else.
+    call transaction tcode using bdc_tab mode 'N' update 'S'.
+  endif.
+* RESETEO TABLA INTERNA EN FUNCION BDC_CLOSE.
+*  REFRESH BDC_TAB.
+endform.                               " BDC_INSERT
+
+*---------------------------------------------------------------------*
+*       FORM BDC_INSERT_S_ECO                                         *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  ECO                                                           *
+*  -->  TCODE                                                         *
+*---------------------------------------------------------------------*
+form bdc_insert_s_eco tables eco structure bdcmsgcoll using tcode.
+  clear eco.
+  refresh eco.
+  if online is initial and debug = falso.
+    call function 'BDC_INSERT'
+         exporting
+              tcode          = tcode
+         tables
+              dynprotab      = bdc_tab
+         exceptions
+              internal_error = 1
+              not_open       = 2
+              queue_error    = 3
+              tcode_invalid  = 4.
+  elseif debug = cierto.
+    call transaction tcode using bdc_tab mode 'A' update 'S'
+    messages into eco.
+  else.
+    call transaction tcode using bdc_tab mode 'N' update 'S'
+    messages into eco.
+  endif.
+* RESETEO TABLA INTERNA EN FUNCION BDC_CLOSE.
+*  REFRESH BDC_TAB.
+endform.                               " BDC_INSERT
+
+*---------------------------------------------------------------------*
+*       FORM BDC_CLOSE                                                *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+form bdc_close.
+  if online = falso and debug = falso.
+    call function 'BDC_CLOSE_GROUP'
+         exceptions
+              not_open    = 1
+              queue_error = 2.
+    online = cierto.
+  endif.
+  refresh bdc_tab.
+endform.                               " BDC_CLOSE
+
+
+
+*si--------------------------------------------------------------------*
+*       FORM LOAD                                                     *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  DATA_TAB                                                      *
+*  -->  VALUE(FROM)                                                   *
+*  -->  FILE                                                          *
+*---------------------------------------------------------------------*
+form load tables data_tab using value(from) file.
+
+  translate from to upper case.
+  if from = 'UNIX'.                    " FILE CS '/'.
+*{   REPLACE        TESK900238                                        1
+*\    open dataset file for input in text mode.
+*CAP(epp) UNICODE
+*HAY QUE AÑADIRLE AL TEXT MODE EL ENCODING
+    open dataset file for input in text mode ENCODING DEFAULT.
+*}   REPLACE
+    if sy-subrc <> 0. sy-subrc = 2. exit. endif.
+    do.
+      read dataset file into data_tab.
+      if sy-subrc <> 0.
+        exit.
+      endif.
+      append data_tab.
+    enddo.
+    if sy-subrc = 8. sy-subrc = 3. exit. endif.
+    close dataset file.
+  else.
+    call function 'WS_UPLOAD'
+         exporting
+              codepage            = 'IBM'
+              filename            = file
+              filetype            = 'ASC'
+              headlen             = space
+              line_exit           = space
+              trunclen            = space
+              user_form           = space
+              user_prog           = space
+         tables
+              data_tab            = data_tab
+         exceptions
+              conversion_error    = 1
+              file_open_error     = 2
+              file_read_error     = 3
+              invalid_table_width = 4
+              invalid_type        = 5
+              no_batch            = 6
+              unknown_error       = 7.
+    if sy-subrc ne 0.
+      message s051(z1) with file.      "Error en apertura de fichero
+    endif.
+  endif.
+endform.
+
+*---------------------------------------------------------------------*
+*       FORM SAVE                                                     *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  DATA_TAB                                                      *
+*  -->  VALUE(DEST)                                                   *
+*  -->  FILE                                                          *
+*---------------------------------------------------------------------*
+form save tables data_tab using value(dest) file.
+
+  translate dest to upper case.
+  if dest = 'UNIX'.                    " FILE CS '/'.
+*{   REPLACE        TESK900238                                        1
+*\    open dataset file for output in text mode.
+*CAP. UNICODE 070109 hay que añadir el encoding
+    open dataset file for output in text mode ENCODING DEFAUlt.
+*}   REPLACE
+    if sy-subrc <> 0. sy-subrc = 2. exit. endif.
+    loop at data_tab.
+      transfer data_tab to file.
+      if sy-subrc <> 0. exit. endif.
+    endloop.
+    if sy-subrc = 8. sy-subrc = 3. exit. endif.
+    close dataset file.
+  else.
+    call function 'WS_DOWNLOAD'
+         exporting
+              codepage            = 'IBM'
+              filename            = file
+              filetype            = 'ASC'
+         tables
+              data_tab            = data_tab
+         exceptions
+              file_open_error     = 1
+              file_write_error    = 2
+              invalid_filesize    = 3
+              invalid_table_width = 4
+              invalid_type        = 5
+              no_batch            = 6
+              unknown_error       = 7.
+
+
+  endif.
+endform.
+
+*&---------------------------------------------------------------------*
+*&      Form  OBTEN_AYUDA_FICHERO
+*&---------------------------------------------------------------------*
+*       M¢dulo de ayuda para b£squeda de fichero                       *
+*----------------------------------------------------------------------*
+form obten_ayuda_fichero using p_file p_title .
+  data: l_aux_filename like rlgrap-filename .
+
+* M¢dulo de funci¢n para obtener fichero
+  call function 'WS_FILENAME_GET'
+       exporting
+            def_filename     = ''
+            def_path         = 'C:\'
+            mask             = ',*.*,*.*.'
+            mode             = '0'
+            title            = p_title
+       importing
+            filename         = l_aux_filename
+*           rc               =
+       exceptions
+            inv_winsys       = 1
+            no_batch         = 2
+            selection_cancel = 3
+            selection_error  = 4
+            others           = 5.
+  if sy-subrc eq 0.
+    p_file = l_aux_filename .
+  endif.
+
+endform.                               " OBTEN_AYUDA_FICHERO
+*---------------------------------------------------------------------*
+*       FORM PROCESA_BI                                               *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+*  -->  VALUE(BI_NAME)                                                *
+*---------------------------------------------------------------------*
+form procesa_bi using value(bi_name).
+
+  tables: apqi.                        " Maestro de Batch-input's
+  data: jobcount like tbtcjob-jobcount,
+        jobname  like tbtcjob-jobname.
+
+  jobname = bi_name.
+  select * from apqi where destsys = '        '
+                       and destapp = '        '
+                       and datatyp = 'BDC'
+                       and mandant = sy-mandt
+                       and groupid = bi_name
+                       and progid  = '        '
+                       and qattrib = ' '
+                       and qstate  = ' '.
+    exit.
+  endselect.
+
+  if sy-subrc = 0.
+    call function 'JOB_OPEN'
+         exporting
+              jobgroup = 'BATCH-INPUT'
+              jobname  = jobname
+         importing
+              jobcount = jobcount.
+
+    submit rsbdcbtc user sy-uname
+          via job jobname number jobcount
+          with queue-id eq apqi-qid
+          with mappe    eq apqi-groupid
+          with modus    eq 'N'
+          and return.
+
+    call function 'JOB_CLOSE'
+         exporting
+              jobcount  = jobcount
+              jobname   = jobname
+              strtimmed = 'X'.
+
+  endif.
+
+endform.                               " PROCESA_BI
+*&---------------------------------------------------------------------*
+*&      Form  SELEC_MESSAGE
+*&---------------------------------------------------------------------*
+*       text                                                           *
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+form selec_message using mess_id
+                         mess_type
+                         mess_number
+                         mess_text1 mess_text2 mess_text3 mess_text4
+                   changing   mensaje.
+  data: textoa(20),
+        textob(10),
+        textoc(20),
+        textod(20),
+        long type i.
+
+  clear: textoa, textob, textoc, textod.
+  textoa = mess_text1.
+  textob = mess_text2.
+  textoc = mess_text3.
+  textod = mess_text4.
+
+  select single       * from  t100
+         where  sprsl       = 'S'
+         and    arbgb       = mess_id
+         and    msgnr       = mess_number .
+  if sy-subrc eq 0.
+    if not textoa is initial.
+      long = strlen( textoa ).
+      replace '&' with textoa into t100-text.
+    endif.
+    if not textob is initial.
+      clear long.
+      long = strlen( textob ).
+      replace '&' with textob length long into t100-text.
+    endif.
+    if not textoc is initial.
+      clear long.
+      long = strlen( textoc ).
+      replace '&' with textoc length long into t100-text.
+    endif.
+    if not textod is initial.
+      clear long.
+      long = strlen( textod ).
+      replace '&' with textod length long into t100-text.
+    endif.
+    mensaje  =  t100-text.
+  endif.
+
+endform.                               " SELEC_MESSAGE
+*---------------------------------------------------------------------*
+*       FORM PINTA_MENSAJES                                           *
+*---------------------------------------------------------------------*
+*       ........                                                      *
+*---------------------------------------------------------------------*
+form pinta_mensajes tables eco structure bdcmsgcoll.
+
+  data: num_msg(3) type n.
+  data: begin of mensajes occurs 10.
+  data: texto(100).
+  data: end of mensajes.
+  data: wmessage like message.
+
+  loop at eco.
+    clear wmessage.
+    num_msg = eco-msgnr.
+    call function 'WRITE_MESSAGE'
+         exporting
+              msgid  = eco-msgid
+              msgno  = num_msg
+              msgty  = eco-msgtyp
+              msgv1  = eco-msgv1
+              msgv2  = eco-msgv2
+         importing
+              messg  = wmessage
+         exceptions
+              others = 1.
+    concatenate wmessage-msgty wmessage-msgid into mensajes-texto.
+    condense mensajes-texto.
+    concatenate  mensajes-texto wmessage-msgno into mensajes-texto.
+    condense mensajes-texto.
+    concatenate  mensajes-texto wmessage-msspc into mensajes-texto.
+    condense mensajes-texto.
+    concatenate  mensajes-texto wmessage-msgtx into mensajes-texto.
+    condense mensajes-texto.
+    append mensajes.
+
+  endloop.
+  loop at mensajes.
+    write: / mensajes-texto.
+  endloop.
+endform.
+
+form escribir_mensajes using texto_error.
+  data l_msgno like sy-msgno.
+  data message like message.
+  clear message.
+  l_msgno = itab-msgnr.
+
+  call function 'WRITE_MESSAGE'
+       exporting
+            msgid   = itab-msgid
+            msgno   = l_msgno
+            msgty   = itab-msgtyp
+            msgv1   = itab-msgv1
+            msgv2   = itab-msgv2
+            msgv3   = itab-msgv3
+            msgv4   = itab-msgv4
+*           msgv5   = spacev1
+        importing
+*         error   = = p_msgv3
+            messg   = message
+*         msgln   = = space
+       exceptions
+            others  = 1.
+  texto_error = message-msgtx.
+*  write: message-msgtx.
+endform.

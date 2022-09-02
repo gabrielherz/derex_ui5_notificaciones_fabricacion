@@ -1,0 +1,298 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZDEFINICIONES
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*&  Include           ZDEFINICIONES
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&  Include           ZDEFINICIONES
+*&---------------------------------------------------------------------*
+DEFINE not.
+  case &1.
+    when '1'. &2 = '0'.
+    when '0'. &2 = '1'.
+    when 'X'. &2 = ' '.
+    when ' '. &2 = 'X'.
+  endcase.
+END-OF-DEFINITION.
+
+DEFINE declare_alv.
+  data: df_xclude              type ui_functions               .
+  data: df_variant             type disvariant                 .
+  data: df_layout              type lvc_s_layo                 .
+  data: df_fieldcat            type lvc_t_fcat with header line.
+  data: df_sort	               type	lvc_t_sort with header line.
+  data: df_stable	             type	lvc_s_stbl .
+DATA: DF_ALV_GRAPHICS Type  DTC_T_TC WITH HEADER LINE.
+END-OF-DEFINITION.
+
+DEFINE show_alv.
+*&---------------------------------------------------------------------*
+*&      Form  MOSTRAR_ALV
+*& &1 Tabla interna
+*& &2 custom_container
+*& &3 grid
+*& &4 tittle
+*& &5 Nombre de la estructura estandard
+*&---------------------------------------------------------------------*
+* form excepciones_alv  tables it_fieldcat  type  lvc_t_fcat
+*                              iT_XCLUDe    TYPE  UI_FUNCTIONS
+*                       using grid TYPE REF TO    cl_gui_alv_grid
+*                             TABLA.
+***********************************************************************
+*  if &2 is initial.
+*    create object &2  exporting container_name = &6 .
+*  endif.
+
+  refresh df_fieldcat.
+  refresh df_xclude.
+
+  df_stable-row = 'X'.
+  df_stable-col = 'X'.
+
+  clear df_layout.
+  df_variant-report    = sy-repid.
+  df_variant-username  = sy-uname.
+*  df_variant-handle    = vhandle + 1.vhandle = df_variant-handle.
+  df_layout-grid_title = &4.
+  df_layout-zebra      = 'X'.
+*  df_layout-cwidth_opt = 'X'.
+
+* Rellenamos el fieldcat...
+  call function 'LVC_FIELDCATALOG_MERGE'
+    exporting
+      i_buffer_active        = 'X'
+      i_structure_name       = &5
+      i_client_never_display = 'X'
+      i_bypassing_buffer     = ''
+    changing
+      ct_fieldcat            = df_fieldcat[]
+    exceptions
+      inconsistent_interface = 1
+      program_error          = 2
+      others                 = 3.
+
+append cl_gui_alv_grid=>MC_FC_FIND  to df_xclude.
+append cl_gui_alv_grid=>MC_FC_FIND_MORE  to df_xclude.
+append cl_gui_alv_grid=>MC_FC_DELETE_FILTER to df_xclude.
+append cl_gui_alv_grid=>MC_FC_FILTER to df_xclude.
+append cl_gui_alv_grid=>MC_FC_PRINT to df_xclude.
+append cl_gui_alv_grid=>MC_FC_PRINT_BACK to df_xclude.
+append cl_gui_alv_grid=>MC_FC_PRINT_PREV to df_xclude.
+*append cl_gui_alv_grid=>MC_FC_SORT to df_xclude.
+*append cl_gui_alv_grid=>MC_FC_SORT_ASC to df_xclude.
+*append cl_gui_alv_grid=>MC_FC_SORT_DSC to df_xclude.
+*append cl_gui_alv_grid=>mc_fc_sum  to df_xclude.
+append cl_gui_alv_grid=>mc_fc_count to df_xclude.
+append cl_gui_alv_grid=>mc_fc_average to df_xclude.
+append cl_gui_alv_grid=>mc_fc_maximum to df_xclude.
+append cl_gui_alv_grid=>mc_fc_minimum to df_xclude.
+append cl_gui_alv_grid=>mc_fc_subtot to df_xclude.
+append cl_gui_alv_grid=>mc_fc_auf to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_paste to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_paste_new_row to df_xclude.
+append cl_gui_alv_grid=>mc_mb_view to df_xclude.
+append cl_gui_alv_grid=>mc_fc_views to df_xclude.
+append cl_gui_alv_grid=>mc_fc_print_prev to df_xclude.
+append cl_gui_alv_grid=>mc_fc_view_grid to df_xclude.
+append cl_gui_alv_grid=>mc_fc_view_excel to df_xclude.
+append cl_gui_alv_grid=>mc_fc_view_crystal to df_xclude.
+append cl_gui_alv_grid=>mc_fc_view_lotus to df_xclude.
+append cl_gui_alv_grid=>mc_fc_send to df_xclude.
+append cl_gui_alv_grid=>mc_fc_call_abc to df_xclude.
+append cl_gui_alv_grid=>mc_fc_call_xint to df_xclude.
+append cl_gui_alv_grid=>mc_fc_expcrdesig to df_xclude.
+append cl_gui_alv_grid=>mc_fc_expcrtempl to df_xclude.
+append cl_gui_alv_grid=>mc_mb_paste to df_xclude.
+*append cl_gui_alv_grid=>mc_fc_load_variant to df_xclude.
+*append cl_gui_alv_grid=>mc_fc_current_variant to df_xclude.
+*append cl_gui_alv_grid=>mc_fc_maintain_variant to df_xclude.
+*append cl_gui_alv_grid=>mc_fc_save_variant to df_xclude.
+append cl_gui_alv_grid=>mc_fc_select_all to df_xclude.
+append cl_gui_alv_grid=>mc_fc_deselect_all to df_xclude.
+append cl_gui_alv_grid=>mc_fc_graph to df_xclude.
+append cl_gui_alv_grid=>mc_fc_info to df_xclude.
+append cl_gui_alv_grid=>mc_fc_f4 to df_xclude.
+append cl_gui_alv_grid=>mc_fc_call_report to df_xclude.
+append cl_gui_alv_grid=>mc_fc_check to df_xclude.
+append cl_gui_alv_grid=>mc_fc_refresh to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_cut to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_copy to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_undo to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_append_row to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_insert_row to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_delete_row to df_xclude.
+append cl_gui_alv_grid=>mc_fc_loc_copy_row to df_xclude.
+append cl_gui_alv_grid=>mc_fc_reprep to df_xclude.
+append cl_gui_alv_grid=>mc_fc_call_chain to df_xclude.
+append cl_gui_alv_grid=>mc_fc_call_more to df_xclude.
+append cl_gui_alv_grid=>mc_fc_call_master_data to df_xclude.
+
+  if &3 is initial.
+    create object &3
+      exporting
+        i_parent = &2.
+
+   call method &3->register_edit_event
+    exporting
+      i_event_id = cl_gui_alv_grid=>mc_evt_enter.
+
+  try.
+      perform excepciones_alv in program (sy-repid)
+                               tables df_fieldcat[]
+                                      df_xclude[]
+                               using  &3 &5.
+
+    catch cx_sy_dyn_call_illegal_form.
+  endtry.
+
+    call method &3->set_table_for_first_display
+      exporting
+        i_buffer_active      = ''
+        i_bypassing_buffer   = ''
+*        i_structure_name     = 'I_TAB'
+        is_variant           = df_variant
+        is_layout            = df_layout
+        i_default            = 'X'
+        i_save               = 'X'
+        it_toolbar_excluding = df_xclude[]
+        IT_ALV_GRAPHICS      = DF_ALV_GRAPHICS[]
+      changing
+        it_outtab            = &1[]
+        it_fieldcatalog      = df_fieldcat[]
+        it_sort              = df_sort[]
+.
+*      it_filter            = it_filter[].
+  else.
+
+  try.
+      perform excepciones_alv in program (sy-repid)
+                               tables df_fieldcat[]
+                                      df_xclude[]
+                               using  &3 &5.
+
+    catch cx_sy_dyn_call_illegal_form.
+  endtry.
+
+CALL METHOD &3->get_frontend_layout
+      IMPORTING
+        es_layout = df_layout.
+    df_layout-cwidth_opt = 'X'.
+    CALL METHOD &3->set_frontend_layout
+      EXPORTING
+        is_layout = df_layout.
+    call method &3->refresh_table_display.
+
+
+  endif.
+END-OF-DEFINITION.
+
+DATA: l_mensajes TYPE bapiret2.
+DEFINE new_mesaje .
+  clear l_mensajes.
+  l_mensajes-type        = &2.
+  l_mensajes-id          = &3.
+  l_mensajes-number      = &4.
+  l_mensajes-message_v1  = &5.
+  l_mensajes-message_v2  = &6.
+  l_mensajes-message_v3  = &7.
+  l_mensajes-message_v4  = &8.
+  l_mensajes-LOG_NO       = &9.
+
+  append l_mensajes to &1.
+END-OF-DEFINITION.
+
+
+
+
+DEFINE show_mensajes.
+  check &1[] is not initial.
+
+CALL FUNCTION 'ZGBC_MOSTRAR_LOG_V2'
+  TABLES
+    IT_LOG        = &1[]
+          .
+
+  refresh &1.
+END-OF-DEFINITION.
+
+DEFINE declare_steps_clock.
+  data: clck_steps type i.
+  data: step       type i.
+  data: %_steps    type p decimals 2.
+END-OF-DEFINITION.
+
+DEFINE num_steps_clock.
+  clck_steps = &1.
+  clear step.
+END-OF-DEFINITION.
+
+DEFINE show_clock_step.
+  "Control de steps...
+  add 1 to step.
+  if clck_steps is not initial.
+    %_steps = ( step / clck_steps ) * 100.
+  endif.
+
+  "Mostramos el reloj con el mensaje...
+  call function 'SAPGUI_PROGRESS_INDICATOR'
+    exporting
+      percentage = %_steps
+      text       = &1.
+END-OF-DEFINITION.
+
+*&---------------------------------------------------------------------*
+*&      Macro ADDRANGO_LOW_EQ
+*&---------------------------------------------------------------------*
+*       Rellena un rango con opciones de inclusión
+*       Ej:  ADDRANGO_LOW_EQ P_BUKRS 'Z021'.
+*----------------------------------------------------------------------*
+DEFINE addrango_low_eq.
+  clear &1.
+  &1-option = 'EQ'.
+  &1-sign = 'I'.
+  &1-low = &2.
+  append &1.
+END-OF-DEFINITION.
+
+*&---------------------------------------------------------------------*
+*&      Macro ADDRANGO_HIGH_EQ
+*&---------------------------------------------------------------------*
+*       Rellena un rango con opciones de inclusión
+*       Ej:  ADDRANGO_HIGH_EQ P_BUKRS 'Z021'.
+*----------------------------------------------------------------------*
+DEFINE addrango_high_eq.
+  clear &1.
+  &1-option = 'EQ'.
+  &1-sign = 'I'.
+  &1-high = &2.
+  append &1.
+END-OF-DEFINITION.
+
+DEFINE addrango_low_high_bt.
+  CLEAR &1.
+  &1-option = 'BT'.
+  &1-sign = 'I'.
+  &1-low = &2.
+  &1-high = &3.
+ INSERT &1 INTO TABLE &4.
+END-OF-DEFINITION.
+
+DEFINE graba_texto.
+*&------------------------------------------------------------------------
+*&    GRABACIÓN DE TEXTOS LARGOS
+*
+*
+*
+*&-------------------------------------------------------------------------
+END-OF-DEFINITION.
+
+DEFINE lee_texto.
+*&---------------------------------------------------------------------------
+*&     LECTURA DE TEXTOS LARGOS
+*
+*
+*
+*&---------------------------------------------------------------------------
+END-OF-DEFINITION.

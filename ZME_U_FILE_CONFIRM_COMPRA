@@ -1,0 +1,56 @@
+*&---------------------------------------------------------------------*
+*& Report ZME_U_FILE_CONFIRM_COMPRA
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zme_u_file_confirm_compra.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+*PARAMETERS: p_front RADIOBUTTON GROUP rb1 USER-COMMAND uc DEFAULT 'X' .
+PARAMETERS: p_data TYPE localfile LOWER CASE MODIF ID md1.
+
+SELECTION-SCREEN SKIP 1.
+* eliminación de confirmaciones
+parameters: p_delete RADIOBUTTON GROUP rb2 user-command uc .
+parameters: p_insert RADIOBUTTON GROUP rb2 .
+
+*parameters: p_UPDATE RADIOBUTTON GROUP rb2.
+"as checkbox default abap_false user-command flag.
+
+*SELECTION-SCREEN SKIP 1.
+*PARAMETERS: p_fondo RADIOBUTTON GROUP rb1.
+*PARAMETERS: p_ruta(128) TYPE c LOWER CASE MODIF ID md2.
+
+*SELECTION-SCREEN SKIP 1.
+*parameters: p_comm AS CHECKBOX DEFAULT abap_false USER-COMMAND flag.
+SELECTION-SCREEN END OF BLOCK b1.
+
+INCLUDE zme_u_file_confirm_compra_top.
+INCLUDE z_utilities_frm.
+INCLUDE zme_u_file_confirm_compra_frm.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR: p_data.
+  PERFORM f_ayuda CHANGING p_data.
+
+START-OF-SELECTION.
+  PERFORM f_main.
+*
+** se oculta el bloque que no ha sido seleccionado para que la persona no se confunda a elegir los valores
+*AT SELECTION-SCREEN OUTPUT.
+*  IF p_front = 'X'.
+*    LOOP AT SCREEN.
+*      IF screen-group1 = 'MD2'.
+*        screen-active = 0.
+*        MODIFY SCREEN.
+*      ENDIF.
+*    ENDLOOP.
+*  ELSE.
+*    LOOP AT SCREEN.
+*      IF screen-group1 = 'MD1'.
+*        screen-active = 0.
+*        MODIFY SCREEN.
+*      ENDIF.
+*    ENDLOOP.
+*  ENDIF.
+*  APPEND screen TO gt_screen.

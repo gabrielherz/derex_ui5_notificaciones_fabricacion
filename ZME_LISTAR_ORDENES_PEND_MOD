@@ -1,0 +1,175 @@
+*&---------------------------------------------------------------------*
+*& Include          ZME_LISTAR_ORDENES_PEND_MOD
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Module status_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  DATA lt_botones_del TYPE TABLE OF sy-ucomm.
+  DATA lv_title TYPE string.
+
+  APPEND 'BR1' TO lt_botones_del.
+  APPEND 'BR2' TO lt_botones_del.
+  APPEND 'BR3' TO lt_botones_del.
+  APPEND 'BR4' TO lt_botones_del.
+
+  lv_title =  cl_wd_utilities=>get_otr_text_by_alias(
+                                                      EXPORTING
+                                                        alias      = 'ZGMM_GENERAL/ZMM_OTR_ORDENES_COMPRA_PEND'
+                                                        language   = 'S' ).
+
+  SET PF-STATUS '0100' EXCLUDING lt_botones_del.
+  SET TITLEBAR  '0100'  .
+
+  IF go_cont_eket IS INITIAL.
+    CREATE OBJECT go_cont_eket
+      EXPORTING
+        container_name              = 'CONT_EKET'
+      EXCEPTIONS
+        cntl_error                  = 1
+        cntl_system_error           = 2
+        create_error                = 3
+        lifetime_error              = 4
+        lifetime_dynpro_dynpro_link = 5
+        OTHERS                      = 6.
+  ENDIF.
+
+  show_alv gt_data go_cont_eket go_grid_eket lv_title 'ZME_S_ORDENES_PENDIENTES' . "go_event_handler.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       Botones
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE sy-ucomm.
+    WHEN 'BACK'.        LEAVE TO SCREEN 0.
+    WHEN 'EXIT'.        LEAVE TO SCREEN 0.
+    WHEN 'CANCEL'.      LEAVE TO SCREEN 0.
+    WHEN 'REFRESH'.     PERFORM f_main.
+    WHEN gc_item_sel.   PERFORM f_call_form_0200 .
+    WHEN gc_item_me22n.
+      PERFORM f_actualizar_lineas USING    gv_alv_index
+                                  CHANGING gt_data.
+    WHEN gc_enviar.  PERFORM f_call_form_0300.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE sy-ucomm.
+    WHEN 'CANCEL'. sy-subrc = 4.LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  CHECK_FORMULARIO  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE check_formulario INPUT.
+  DATA lt_errores TYPE wuebs_tty.
+  CALL FUNCTION 'ME_CONFIRMATION_CHECK_QUANTITY'
+    EXPORTING
+      i_ebeln = gs_data-ebeln
+      i_ebelp = gs_data-ebelp
+      i_meins = gs_data-meins
+      i_menge = ekes-menge "gs_data-menge
+      i_date  = ekes-eindt
+      i_msg   = 'X'
+    TABLES
+      errors  = lt_errores.
+
+  gs_form_0200-lb_lpein = lb_lpein.
+  gs_form_0200-lb_ebtyp = lb_ebtyp. "ekes-ebtyp.
+  gs_form_0200-txt_ref = ekes-xblnr.
+  gs_form_0200-txt_eindt = ekes-eindt.
+  gs_form_0200-txt_menge = ekes-menge.
+  gs_form_0200-txt_precio = ekpo-netpr.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*       Limpia los cmapos del formulario al finalizar en dynpro 0200
+*&---------------------------------------------------------------------*
+MODULE clear_fields OUTPUT.
+  CASE gc_status.
+*    si es create, se limpian los campos antes de mostrar el formulario, de modo que no se vean los datos del tratamiento anterior
+    WHEN gc_icon_c.
+      CLEAR:    lb_lpein,
+                lb_ebtyp, "ekes-ebtyp,
+                ekes-xblnr,
+                ekes-eindt,
+                ekes-menge.
+*      siempre se rescatará el precio
+      ekpo-netpr = gs_pedido-precio.
+*  si esw update, se actualizan los campos con la información de la línea seleccionada en el ALV
+    WHEN gc_icon_u.
+      lb_lpein   = gs_pedido-lpein.
+      lb_ebtyp   = gs_pedido-ebtyp. "ekes-ebtyp = gs_pedido-ebtyp.
+      ekes-xblnr = gs_pedido-ref.
+      ekes-eindt = gs_pedido-fecha_entrega.
+      ekes-menge = gs_pedido-cantidad.
+      ekpo-netpr = gs_pedido-precio.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module STATUS_0300 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_0300 OUTPUT.
+*  data lT_ORDENES  TYPE /ACCGO/EBELN_EBELP_T.
+  DATA lt_data    TYPE zme_tt_ordenes_proveedores.
+
+
+  lv_title =  cl_wd_utilities=>get_otr_text_by_alias(
+                                                        EXPORTING
+                                                          alias      = 'ZGMM_GENERAL/ZMM_OTR_ENVIAR_EMAIL'
+                                                          language   = 'S' ).
+  SET PF-STATUS '0300'. "EXCLUDING lt_botones_del.
+  SET TITLEBAR  '0300'  .
+
+  PERFORM get_pedidos_selected_to_send . "changing lt_data.
+
+  IF go_cont_mail IS INITIAL.
+    CREATE OBJECT go_cont_mail
+      EXPORTING
+        container_name              = 'CONT_MAIL'
+      EXCEPTIONS
+        cntl_error                  = 1
+        cntl_system_error           = 2
+        create_error                = 3
+        lifetime_error              = 4
+        lifetime_dynpro_dynpro_link = 5
+        OTHERS                      = 6.
+  ENDIF.
+
+  show_alv gt_dest_email go_cont_mail go_grid_mail lv_title 'ZME_S_ORDENES_PROVEEDORES' . "go_event_handler.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  DATA(lv_error) = abap_false .
+
+  CASE sy-ucomm.
+    WHEN 'BACK'. LEAVE TO SCREEN 0.
+    WHEN 'EXIT'. LEAVE TO SCREEN 0.
+    WHEN 'CANCEL'. LEAVE TO SCREEN 0.
+    WHEN 'REFRESH'. PERFORM f_main.
+    WHEN gc_reclamar. gc_accion_envio = gc_reclamar.
+    WHEN gc_confirm.
+      gc_accion_envio = gc_confirm.
+  ENDCASE.
+ENDMODULE.

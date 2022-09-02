@@ -1,0 +1,178 @@
+*&---------------------------------------------------------------------*
+*& Include          ZME_LISTAR_ORDENES_PEND_CLS
+*&---------------------------------------------------------------------*
+
+*-----------------------------------
+* DEFINICIÓN DE CLASES
+************************************
+** Event Hanldrer para GRID del ALV
+CLASS gcl_event_handler DEFINITION.
+
+  PUBLIC SECTION.
+    CLASS-METHODS:show_info_dialog
+      IMPORTING it_bapiret2 TYPE bapiret2_t.
+
+    METHODS:handle_hotspot_click
+                  FOR EVENT hotspot_click OF cl_gui_alv_grid
+      IMPORTING e_row_id e_column_id.
+
+  PRIVATE SECTION.
+
+ENDCLASS.
+****DECLARACIÓN DE CLASES
+DATA: go_event_handler TYPE REF TO gcl_event_handler.
+
+*----------------------------------
+*IMPLEMENTACIONES DE CLASES
+***********************************
+*** CLASE EVENT HANDLER
+CLASS gcl_event_handler IMPLEMENTATION.
+
+
+
+  METHOD show_info_dialog.
+    DATA lt_info TYPE trext_string.
+
+*  se obtiene el ícono  warning
+    SELECT SINGLE id,
+                  name
+                  FROM icon
+                  WHERE name EQ @gc_icon_w
+                  INTO @DATA(ls_icon_w).
+*  se obtiene el ícono error
+    SELECT SINGLE id,
+                  name
+                  FROM icon
+                  WHERE name EQ @gc_icon_e
+                  INTO @DATA(ls_icon_e).
+*  se obtiene el ícono info
+    SELECT SINGLE id,
+                  name
+                  FROM icon
+                  WHERE name EQ @gc_icon_i
+                  INTO @DATA(ls_icon_i).
+
+
+    LOOP AT it_bapiret2  ASSIGNING FIELD-SYMBOL(<lfs_bapiret2>).
+
+      APPEND INITIAL LINE TO lt_info ASSIGNING FIELD-SYMBOL(<lfs_info>).
+      CASE <lfs_bapiret2>-type.
+        WHEN gc_w.
+          CONCATENATE ls_icon_w-id  '  '  <lfs_bapiret2>-message INTO <lfs_info> RESPECTING BLANKS.
+        WHEN gc_e.
+*            <LFS_INFO> = ls_icon_e-id && '  ' && <LFS_BAPIRET2>-message.
+          CONCATENATE ls_icon_e-id  '  '  <lfs_bapiret2>-message INTO <lfs_info> RESPECTING BLANKS.
+        WHEN gc_i.
+          CONCATENATE ls_icon_i-id  '  '  <lfs_bapiret2>-message INTO <lfs_info> RESPECTING BLANKS.
+*            <LFS_INFO> = ls_icon_i-id && '  ' && <LFS_BAPIRET2>-message.
+      ENDCASE.
+*          línea vacía después de cada mensaje
+      APPEND INITIAL LINE TO lt_info ASSIGNING FIELD-SYMBOL(<lfs_empty>).
+      <lfs_empty> = '-'.
+    ENDLOOP.
+    DATA(lv_titulo) = cl_wd_utilities=>get_otr_text_by_alias(
+                                                              EXPORTING
+                                                                alias      = 'ZGMM_GENERAL/ZMM_OTR_TITLE_TABLE_DIALOG'
+                                                                language   = 'S' ).
+*   Se muestra el mensaje con la tabla
+    CALL FUNCTION 'POPUP_WITH_TABLE_DISPLAY_OK'
+      EXPORTING
+        endpos_col   = 120
+        endpos_row   = 20
+        startpos_col = 40
+        startpos_row = 5
+        titletext    = lv_titulo
+*       IMPORTING
+*       CHOISE       =
+      TABLES
+        valuetab     = lt_info
+      EXCEPTIONS
+        break_off    = 1
+        OTHERS       = 2.
+
+  ENDMETHOD.
+  METHOD handle_hotspot_click.
+
+*    Se obtiene el registro en el cuál se realiza click en el listado
+    READ TABLE gt_data ASSIGNING FIELD-SYMBOL(<lfs_data>) INDEX e_row_id-index.
+    IF  sy-subrc NE 0.
+      MESSAGE e003(zme_msg) WITH e_row_id-index.
+    ENDIF.
+* variables globales para interactuar con la dynpro 0200
+    gs_data = <lfs_data>.
+*    SE GUARDA EL ÍNDICE DEL SELECT RELAIZADO
+    gv_alv_index = e_row_id-index.
+
+    CASE e_column_id.
+      WHEN gc_ebeln.
+
+        CALL FUNCTION 'ME_DISPLAY_PURCHASE_DOCUMENT'
+          EXPORTING
+            i_ebeln              = <lfs_data>-ebeln
+            i_ebelp              = <lfs_data>-ebelp
+            i_enjoy              = 'X'
+*           I_PREVIEW            =
+*           I_DATA_FROM_BUFFER   =
+*           I_BSTYP              =
+*           I_DISPLAY_ONLY       = ' '
+            i_edit               = 'X'
+*           I_ETENR              =
+*           I_DOC_INITIATOR      =
+*           I_COMMIT_WAIT        =
+          EXCEPTIONS
+            not_found            = 1
+            no_authority         = 2
+            invalid_call         = 3
+            preview_not_possible = 4
+            OTHERS               = 5.
+        IF sy-subrc <> 0.
+          MESSAGE 'Error al llamar transacción ME22N' TYPE 'E' DISPLAY LIKE 'E'.
+        ENDIF.
+*    se  lanza el evento ITEM_ME22N_UPDATE para actualizar las líneas modificadas desde la transacción
+        CALL METHOD cl_gui_cfw=>set_new_ok_code
+          EXPORTING
+            new_code = gc_item_me22n.
+
+*
+**  Se actualizan las líneas tratadas en la
+*    PERFORM f_actualizar_lineas USING    gv_alv_index
+*                                CHANGING gt_data.
+
+      WHEN gc_icon_u.
+*    Guardo alguno de los tres eventos de los botones dle listaod para saber en que modo se abrirá el formulario para órdenes de compra
+        gc_status = gc_icon_u.
+*    se  lanza el evento item_sel para que se reciba en la 0100 y desde ahí se trate la actualización
+        CALL METHOD cl_gui_cfw=>set_new_ok_code
+          EXPORTING
+            new_code = gc_item_sel.
+
+      WHEN gc_icon_c.
+*        CLEAR gs_pedido.
+        gc_status = gc_icon_c.
+
+*    se  lanza el evento item_sel para que se reciba en la 0100 y desde ahí se trate la creación
+        CALL METHOD cl_gui_cfw=>set_new_ok_code
+          EXPORTING
+            new_code = gc_item_sel.
+
+      WHEN gc_icon_d.
+        gc_status = gc_icon_d.
+
+*    se  lanza el evento item_sel para que se reciba en la 0100 y desde ahí se trate la creación
+        CALL METHOD cl_gui_cfw=>set_new_ok_code
+          EXPORTING
+            new_code = gc_item_sel.
+
+      WHEN gc_check_box.
+        IF <lfs_data>-check_box IS INITIAL.
+          <lfs_data>-check_box = abap_true.
+        ELSE.
+          <lfs_data>-check_box = abap_false.
+        ENDIF.
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+
+ENDCLASS.
